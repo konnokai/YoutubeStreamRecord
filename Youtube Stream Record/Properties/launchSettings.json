@@ -1,0 +1,17 @@
+{
+  "profiles": {
+    "Youtube Stream Record": {
+      "commandName": "Project",
+      "commandLineArgs": "once",
+      "remoteDebugEnabled": false,
+      "sqlDebugging": false,
+      "remoteDebugMachine": "",
+      "authenticationMode": "None",
+      "nativeDebugging": false
+    },
+    "newProfile1": {
+      "commandName": "Project",
+      "commandLineArgs": "sub"
+    }
+  }
+}
