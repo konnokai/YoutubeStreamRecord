@@ -249,7 +249,11 @@ namespace Youtube_Stream_Record
 
                         string fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}.ts";
 
-                        if (reRecordCount == 0 || reRecordCount == 5) redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName, IsReRecord = reRecordCount == 5 }));
+                        if (reRecordCount == 0 || reRecordCount == 5)
+                        {
+                            redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName, IsReRecord = reRecordCount == 5 }));
+                            if (reRecordCount == 5) isClose = true;
+                        }
 
                         Log.Info($"存檔名稱: {fileName}");
                         Process.Start("streamlink", $"-o \"{outputPath}{fileName}\" https://www.youtube.com/watch?v={videoId} best").WaitForExit();
