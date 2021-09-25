@@ -241,6 +241,7 @@ namespace Youtube_Stream_Record
 
                                 reStartStreamLoopCount++;
                                 if (reRecordCount != 0 && reStartStreamLoopCount >= 20) break;
+                                else if (reRecordCount == 0 && reStartStreamLoopCount >= 30) return true;
                             }
                         } while (true);
                         #endregion
