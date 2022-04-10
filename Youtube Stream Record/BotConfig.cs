@@ -31,6 +31,7 @@ public class BotConfig
             }
 
             GoogleApiKey = config.GoogleApiKey;
+            RedisOption = config.RedisOption;
         }
         catch (Exception ex)
         {

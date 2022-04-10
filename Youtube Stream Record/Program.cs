@@ -1,7 +1,7 @@
 ﻿using CommandLine;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
-using Google.Apis.YouTube.v3.Data;
+using HtmlAgilityPack;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
@@ -10,6 +10,7 @@ using System.Linq;
 using System.Management;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -55,6 +56,17 @@ namespace Youtube_Stream_Record
             string channelId, channelTitle, videoId = "";
 
             #region 初始化
+            try
+            {
+                RedisConnection.Init(botConfig.RedisOption);
+                redis = RedisConnection.Instance.ConnectionMultiplexer;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Redis連線錯誤，請確認伺服器是否已開啟");
+                Log.Error(ex.Message);
+            }
+
             if (Id.Length == 11)
             {
                 videoId = Id;
@@ -71,21 +83,18 @@ namespace Youtube_Stream_Record
             }
             else
             {
-                channelId = Id;
-
-                if (!channelId.Contains("UC"))
-                {
-                    Log.Error("頻道Id錯誤");
-                    return true;
-                }
-
                 try
                 {
-                    channelId = channelId.Substring(channelId.IndexOf("UC"), 24);
+                    channelId = await GetChannelId(Id).ConfigureAwait(false);
                 }
-                catch
+                catch (FormatException fex)
                 {
-                    Log.Error("頻道Id格式錯誤，需為24字數");
+                    Log.Error (fex.Message);
+                    return true;
+                }
+                catch (ArgumentNullException)
+                {
+                    Log.Error("網址不可空白");
                     return true;
                 }
 
@@ -99,17 +108,6 @@ namespace Youtube_Stream_Record
                 }
             }
 
-            try
-            {
-                RedisConnection.Init(botConfig.RedisOption);
-                redis = RedisConnection.Instance.ConnectionMultiplexer;
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Redis連線錯誤，請確認伺服器是否已開啟");
-                Log.Error(ex.Message);
-            }
-
             Log.Info($"頻道Id: {channelId}");
             Log.Info($"頻道名稱: {channelTitle}");
 
@@ -121,9 +119,9 @@ namespace Youtube_Stream_Record
 
             outputPath = outputPath.Replace("\"", "");
             Log.Info($"輸出路徑: {outputPath}");
+            Log.Info($"檢測開台的間隔: {startStreamLoopTime}秒");
             if (videoId == "")
             {
-                Log.Info($"檢測開台的間隔: {startStreamLoopTime}秒");
                 Log.Info($"檢測下個直播的間隔: {checkNextStreamTime}秒");
                 if (isLoop) Log.Info("已設定為重複錄製模式");
             }
@@ -205,66 +203,68 @@ namespace Youtube_Stream_Record
                     #endregion
 
                     #region 3. 開始錄製直播
-                    int reRecordCount = 0;
                     do
                     {
-                        #region 4. 等待開台
-                        int reStartStreamLoopCount = 0;
-                        do
-                        {
-                            try
-                            {
-                                web = webClient.DownloadString($"https://www.youtube.com/watch?v={videoId}");
-                            }
-                            catch (Exception ex)
-                            {
-                                Log.Error("Stage2");
-                                Log.Error(ex.Message);
-                                Log.Error(ex.StackTrace);
-                                Thread.Sleep(5000);
-                                continue;
-                            }
+                        #region 4. 等待開台 (作廢)
+                        //int reStartStreamLoopCount = 0;
+                        //do
+                        //{
+                        //    try
+                        //    {
+                        //        web = webClient.DownloadString($"https://www.youtube.com/watch?v={videoId}");
+                        //    }
+                        //    catch (Exception ex)
+                        //    {
+                        //        Log.Error("Stage2");
+                        //        Log.Error(ex.Message);
+                        //        Log.Error(ex.StackTrace);
 
-                            if (web.Contains("qualityLabel")) break;
-                            else
-                            {
-                                Log.Warn("還沒開台...");
-                                int num = (int)startStreamLoopTime;
+                        //        if (ex.Message.Contains("(429) Too Many Requests"))
+                        //        {
+                        //            redis.GetSubscriber().Publish("youtube.429error", videoId);
+                        //            return true;
+                        //        }
 
-                                do
-                                {
-                                    Log.Debug($"剩餘: {num}秒");
-                                    num--;
-                                    if (isClose) return true;
-                                    Thread.Sleep(1000);
-                                } while (num >= 0);
+                        //        Thread.Sleep(5000);
+                        //        continue;
+                        //    }
 
-                                reStartStreamLoopCount++;
-                                if (reRecordCount != 0 && reStartStreamLoopCount >= 20) break;
-                                else if (reRecordCount == 0 && reStartStreamLoopCount >= 30) return true;
-                            }
-                        } while (true);
+                        //    if (web.Contains("qualityLabel")) break;
+                        //    else
+                        //    {
+                        //        Log.Warn("還沒開台...");
+                        //        int num = (int)startStreamLoopTime;
+
+                        //        do
+                        //        {
+                        //            Log.Debug($"剩餘: {num}秒");
+                        //            num--;
+                        //            if (isClose) return true;
+                        //            Thread.Sleep(1000);
+                        //        } while (num >= 0);
+
+                        //        reStartStreamLoopCount++;
+                        //        if (reRecordCount != 0 && reStartStreamLoopCount >= 20) break;
+                        //        else if (reRecordCount == 0 && reStartStreamLoopCount >= 30) return true;
+                        //    }
+                        //} while (true);
                         #endregion
 
                         if (IsLiveEnd(videoId)) break;
 
-                        string fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}.ts";
+                        string fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
 
-                        if (reRecordCount == 0 || reRecordCount == 5)
-                        {
-                            redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName, IsReRecord = reRecordCount == 5 }));
-                            if (reRecordCount == 5) isClose = true;
-                        }
+                        redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName }));
 
                         Log.Info($"存檔名稱: {fileName}");
-                        Process.Start("streamlink", $"-o \"{outputPath}{fileName}\" https://www.youtube.com/watch?v={videoId} best").WaitForExit();
+                        Process.Start("yt-dlp", $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser chrome --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts").WaitForExit();
+                        isClose = true;
                         Log.Info($"錄影結束");
 
                         #region 確定直播是否結束
                         if (IsLiveEnd(videoId)) break;
 
-                        Log.Warn($"直播尚未結束，重新錄影");
-                        reRecordCount++;
+                        //Log.Warn($"直播尚未結束，重新錄影");
                         #endregion
                     } while (!isClose);
                     #endregion
@@ -301,11 +301,11 @@ namespace Youtube_Stream_Record
                 return Status.IsChatRoom;
             }
 
-            if (streamScheduledStartTime > DateTime.Now.AddDays(3))
-            {
-                Log.Warn("該待機所排定時間超過三日，已略過");
-                return Status.IsChatRoom;
-            }
+            //if (streamScheduledStartTime > DateTime.Now.AddDays(3))
+            //{
+            //    Log.Warn("該待機所排定時間超過三日，已略過");
+            //    return Status.IsChatRoom;
+            //}
 
             if (videoResult.Items[0].LiveStreamingDetails.ActualEndTime != null)
             {
@@ -388,7 +388,7 @@ namespace Youtube_Stream_Record
                 }
                 if (videoResult2.Items[0].Snippet.LiveBroadcastContent == "none")
                 {
-                    redis.GetSubscriber().Publish("youtube.endstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = $"youtube_{videoResult2.Items[0].Snippet.ChannelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}.ts", IsReRecord = false }));
+                    redis.GetSubscriber().Publish("youtube.endstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = $"youtube_{videoResult2.Items[0].Snippet.ChannelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}" }));
                     return true;
                 }
             }
@@ -433,6 +433,7 @@ namespace Youtube_Stream_Record
                 Log.Info($"已接收測試請求");
             });
 
+            Log.Info($"訂閱模式，保存路徑: {outputPath}");
             Log.Info("已訂閱Redis頻道");
 
             do { await Task.Delay(1000); }
@@ -442,6 +443,74 @@ namespace Youtube_Stream_Record
             Log.Info("已取消訂閱Redis頻道");
 
             return true;
+        }
+
+        public static async Task<string> GetChannelId(string channelUrl)
+        {
+            if (string.IsNullOrEmpty(channelUrl))
+                throw new ArgumentNullException(channelUrl);
+
+            channelUrl = channelUrl.Trim();
+
+            switch (channelUrl.ToLower())
+            {
+                case "all":
+                case "holo":
+                case "2434":
+                case "other":
+                    return channelUrl.ToLower();
+            }
+
+            string channelId = "";
+
+            Regex regex = new Regex(@"(http[s]{0,1}://){0,1}(www\.){0,1}(?'Host'[^/]+)/(?'Type'[^/]+)/(?'ChannelName'[\w%\-]+)");
+            Match match = regex.Match(channelUrl);
+            if (!match.Success)
+                throw new UriFormatException("錯誤，請確認是否輸入YouTube頻道網址");
+
+            if (match.Groups["Type"].Value == "channel")
+            {
+                channelId = match.Groups["ChannelName"].Value;
+                if (!channelId.StartsWith("UC")) throw new UriFormatException("錯誤，頻道Id格式不正確");
+                if (channelId.Length != 24) throw new UriFormatException("錯誤，頻道Id字元數不正確");
+            }
+            else if (match.Groups["Type"].Value == "c")
+            {
+                string channelName = WebUtility.UrlDecode(match.Groups["ChannelName"].Value);
+
+                if (await redis.GetDatabase().KeyExistsAsync($"discord_stream_bot:ChannelNameToId:{channelName}"))
+                {
+                    channelId = await redis.GetDatabase().StringGetAsync($"discord_stream_bot:ChannelNameToId:{channelName}");
+                }
+                else
+                {
+                    try
+                    {
+                        //https://stackoverflow.com/a/36559834
+                        HtmlWeb htmlWeb = new HtmlWeb();
+                        var htmlDocument = await htmlWeb.LoadFromWebAsync($"https://www.youtube.com/c/{channelName}");
+                        var node = htmlDocument.DocumentNode.Descendants().FirstOrDefault((x) => x.Name == "meta" && x.Attributes.Any((x2) => x2.Name == "itemprop" && x2.Value == "channelId"));
+                        if (node == null)
+                            throw new UriFormatException("錯誤，請確認是否輸入正確的YouTube頻道網址\n" +
+                                "或確認該頻道是否存在");
+
+                        channelId = node.Attributes.FirstOrDefault((x) => x.Name == "content").Value;
+                        if (string.IsNullOrEmpty(channelId))
+                            throw new UriFormatException("錯誤，請確認是否輸入正確的YouTube頻道網址\n" +
+                                "或確認該頻道是否存在");
+
+                        await redis.GetDatabase().StringSetAsync($"discord_stream_bot:ChannelNameToId:{channelName}", channelId);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(channelUrl);
+                        Log.Error(ex.ToString());
+                        throw;
+                    }
+                }
+            }
+
+            return channelId;
         }
 
         private static async Task<(string ChannelId, string ChannelTitle)> GetChannelDataByChannelIdAsync(string channelId)
@@ -500,7 +569,7 @@ namespace Youtube_Stream_Record
         [Verb("loop", HelpText = "重複錄影")]
         public class LoopOptions
         {
-            [Value(0, Required = true, HelpText = "頻道Id")]
+            [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
             public string ChannelId { get; set; }
 
             [Value(1, Required = false, HelpText = "檢測開台的間隔")]
@@ -516,7 +585,7 @@ namespace Youtube_Stream_Record
         [Verb("once", HelpText = "單次錄影")]
         public class OnceOptions
         {
-            [Value(0, Required = true, HelpText = "頻道Id")]
+            [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
             public string ChannelId { get; set; }
 
             [Value(1, Required = false, HelpText = "檢測開台的間隔")]
@@ -541,6 +610,5 @@ namespace Youtube_Stream_Record
     {
         public string VideoId { get; set; }
         public string RecordFileName { get; set; }
-        public bool IsReRecord { get; set; }
     }
 }
