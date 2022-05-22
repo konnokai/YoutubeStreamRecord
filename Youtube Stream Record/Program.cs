@@ -259,6 +259,7 @@ namespace Youtube_Stream_Record
                         if (!Directory.Exists(outputPath)) Directory.CreateDirectory(outputPath);
 
                         redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName }));
+                        await redis.GetDatabase().SetAddAsync("youtube.nowRecord", videoId);
 
                         Log.Info($"存檔名稱: {fileName}");
                         Process.Start("yt-dlp", $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser firefox --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts").WaitForExit();
@@ -290,6 +291,7 @@ namespace Youtube_Stream_Record
                     }
                 }
                 #endregion
+                await redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
             }
             return true;
         }
