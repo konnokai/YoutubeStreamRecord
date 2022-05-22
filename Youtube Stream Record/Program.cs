@@ -459,6 +459,7 @@ namespace Youtube_Stream_Record
             });
 
             Log.Info($"訂閱模式，保存路徑: {outputPath}");
+            Log.Info($"刪檔直播保存路徑: {unarchivedOutputPath}");
             Log.Info("已訂閱Redis頻道");
 
             do { await Task.Delay(1000); }
