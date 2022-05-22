@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace Youtube_Stream_Record
 {
@@ -21,7 +22,7 @@ namespace Youtube_Stream_Record
         const string HTML = "liveStreamabilityRenderer\":{\"videoId\":\"";
 
         static YouTubeService yt;
-        static bool isClose = false;
+        static bool isClose = false, isDelLive = false;
         static ConnectionMultiplexer redis;
         static BotConfig botConfig = new();
         enum Status { Ready, Deleted, IsClose, IsChatRoom, IsChangeTime };
@@ -45,13 +46,13 @@ namespace Youtube_Stream_Record
 
             var result = Parser.Default.ParseArguments<LoopOptions, OnceOptions, SubOptions>(args)
                 .MapResult(
-                (LoopOptions lo)  => StartRecord(lo.ChannelId, lo.OutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true).Result,
-                (OnceOptions oo) => StartRecord(oo.ChannelId, oo.OutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime).Result,
-                (SubOptions so) => SubRecord(so.OutputPath).Result,
+                (LoopOptions lo)  => StartRecord(lo.ChannelId, lo.OutputPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true).Result,
+                (OnceOptions oo) => StartRecord(oo.ChannelId, oo.OutputPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime).Result,
+                (SubOptions so) => SubRecord(so.OutputPath, so.UnarchivedOutputPath).Result,
                 Error => false);
         }
 
-        private static async Task<bool> StartRecord(string Id, string outputPath, uint startStreamLoopTime, uint checkNextStreamTime, bool isLoop = false)
+        private static async Task<bool> StartRecord(string Id, string outputPath, string unarchivedOutputPath, uint startStreamLoopTime, uint checkNextStreamTime, bool isLoop = false)
         {
             string channelId, channelTitle, videoId = "";
 
@@ -132,6 +133,7 @@ namespace Youtube_Stream_Record
 
             using (WebClient webClient = new WebClient())
             {
+                string fileName = "";
                 do
                 {
                     bool hasCommingStream = false;
@@ -252,12 +254,14 @@ namespace Youtube_Stream_Record
 
                         if (IsLiveEnd(videoId)) break;
 
-                        string fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
+                        fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
+                        outputPath += $"{DateTime.Now:yyyyMMdd}{GetEnvSlash()}";
+                        if (!Directory.Exists(outputPath)) Directory.CreateDirectory(outputPath);
 
                         redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName }));
 
                         Log.Info($"存檔名稱: {fileName}");
-                        Process.Start("yt-dlp", $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser chrome --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts").WaitForExit();
+                        Process.Start("yt-dlp", $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser firefox --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts").WaitForExit();
                         isClose = true;
                         Log.Info($"錄影結束");
 
@@ -269,6 +273,23 @@ namespace Youtube_Stream_Record
                     } while (!isClose);
                     #endregion
                 } while (isLoop && !isClose);
+
+                #region 5. 如果直播被砍檔就移到其他地方保存
+                if (!string.IsNullOrEmpty(fileName) && isDelLive)
+                {
+                    foreach (var item in Directory.GetFiles(outputPath, $"{fileName}.*"))
+                    {
+                        try
+                        {
+                            File.Move(item, $"{unarchivedOutputPath}{Path.GetFileName(item)}");
+                        }
+                        catch (Exception ex) 
+                        {
+                            File.AppendAllText($"{outputPath}{fileName}_err.txt", ex.ToString());
+                        }
+                    }
+                }
+                #endregion
             }
             return true;
         }
@@ -383,6 +404,7 @@ namespace Youtube_Stream_Record
             {
                 if (videoResult2.Items.Count == 0)
                 {
+                    isDelLive = true;
                     redis.GetSubscriber().Publish("youtube.deletestream", videoId);
                     return true;
                 }
@@ -397,7 +419,7 @@ namespace Youtube_Stream_Record
             return false;
         }
 
-        private static async Task<bool> SubRecord(string outputPath)
+        private static async Task<bool> SubRecord(string outputPath, string unarchivedOutputPath)
         {
             try
             {
@@ -411,18 +433,21 @@ namespace Youtube_Stream_Record
                 return true;
             }
 
+            if (!outputPath.EndsWith(GetEnvSlash())) outputPath += GetEnvSlash();
+            if (!unarchivedOutputPath.EndsWith(GetEnvSlash())) unarchivedOutputPath += GetEnvSlash();
             var sub = redis.GetSubscriber();
+
             sub.Subscribe("youtube.record", async (redisChannel, videoId) =>
-            {                
+            {
                 Log.Info($"已接收錄影請求: {videoId}");
                 var channelData = await GetChannelDataByVideoIdAsync(videoId);
                 Log.Info(channelData.ChannelId + " / " + channelData.ChannelTitle);
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once {videoId} -o \"{outputPath}\"");
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once {videoId} -o \"{outputPath}\" -u \"{unarchivedOutputPath}\"");
                 else Process.Start(new ProcessStartInfo()
                 {
                     FileName = "dotnet",
-                    Arguments = $"\"Youtube Stream Record.dll\" once {videoId} -o \"{outputPath}\"",
+                    Arguments = $"\"Youtube Stream Record.dll\" once {videoId} -o \"{outputPath}\" -u \"{unarchivedOutputPath}\"",
                     CreateNoWindow = false,
                     UseShellExecute = true
                 });
@@ -444,6 +469,9 @@ namespace Youtube_Stream_Record
 
             return true;
         }
+
+        private static string GetEnvSlash()
+            => (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "\\" : "/");
 
         public static async Task<string> GetChannelId(string channelUrl)
         {
@@ -580,6 +608,9 @@ namespace Youtube_Stream_Record
 
             [Option('o', "output", Required = false, HelpText = "輸出路徑")]
             public string OutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
+
+            [Option('u', "unarchivedoutput", Required = true, HelpText = "刪檔直播輸出路徑")]
+            public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
         }
 
         [Verb("once", HelpText = "單次錄影")]
@@ -596,6 +627,9 @@ namespace Youtube_Stream_Record
 
             [Option('o', "output", Required = false, HelpText = "輸出路徑")]
             public string OutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
+
+            [Option('u', "unarchivedoutput", Required = true, HelpText = "刪檔直播輸出路徑")]
+            public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
         }
         
         [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
@@ -603,6 +637,9 @@ namespace Youtube_Stream_Record
         {
             [Option('o', "output", Required = true, HelpText = "輸出路徑")]
             public string OutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
+
+            [Option('u', "unarchivedoutput", Required = true, HelpText = "刪檔直播輸出路徑")]
+            public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
         }
     }
 
