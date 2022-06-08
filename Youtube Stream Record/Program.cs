@@ -48,7 +48,7 @@ namespace Youtube_Stream_Record
                 .MapResult(
                 (LoopOptions lo)  => StartRecord(lo.ChannelId, lo.OutputPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true).Result,
                 (OnceOptions oo) => StartRecord(oo.ChannelId, oo.OutputPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime).Result,
-                (SubOptions so) => SubRecord(so.OutputPath, so.UnarchivedOutputPath).Result,
+                (SubOptions so) => SubRecord(so.OutputPath, so.UnarchivedOutputPath, so.AutoDeleteArchived).Result,
                 Error => false);
         }
 
@@ -421,7 +421,7 @@ namespace Youtube_Stream_Record
             return false;
         }
 
-        private static async Task<bool> SubRecord(string outputPath, string unarchivedOutputPath)
+        private static async Task<bool> SubRecord(string outputPath, string unarchivedOutputPath, bool autoDeleteArchived)
         {
             try
             {
@@ -463,6 +463,33 @@ namespace Youtube_Stream_Record
             Log.Info($"訂閱模式，保存路徑: {outputPath}");
             Log.Info($"刪檔直播保存路徑: {unarchivedOutputPath}");
             Log.Info("已訂閱Redis頻道");
+            if (autoDeleteArchived)
+            {
+                _ = new Timer((obj) => 
+                {
+                    try
+                    {
+                        Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");
+                        var list = Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly);
+                        foreach (var item in list)
+                        {
+                            var regexResult = regex.Match(item);
+                            if (!regexResult.Success) continue;
+
+                            if (DateTime.Now.Subtract(Convert.ToDateTime($"{regexResult.Groups[1]}/{regexResult.Groups[2]}/{regexResult.Groups[3]}")) > TimeSpan.FromDays(14))
+                            {
+                                Directory.Delete(item, true);
+                                Log.Info($"已刪除: {item}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex.ToString());
+                    }
+                }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
+                Log.Warn("已開啟自動刪除14天後的存檔");
+            }
 
             do { await Task.Delay(1000); }
             while (!isClose);
@@ -643,6 +670,9 @@ namespace Youtube_Stream_Record
 
             [Option('u', "unarchivedoutput", Required = true, HelpText = "刪檔直播輸出路徑")]
             public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
+
+            [Option('d', "audodelete", Required = false, HelpText = "刪檔直播輸出路徑", Default = false)]
+            public bool AutoDeleteArchived { get; set; }
         }
     }
 

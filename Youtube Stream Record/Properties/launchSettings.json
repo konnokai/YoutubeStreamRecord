@@ -2,16 +2,13 @@
   "profiles": {
     "Youtube Stream Record": {
       "commandName": "Project",
-      "commandLineArgs": "once",
-      "remoteDebugEnabled": false,
+      "commandLineArgs": "",
+      "workingDirectory": ".\\bin\\Debug\\net5.0",
       "sqlDebugging": false,
-      "remoteDebugMachine": "",
+      "remoteDebugEnabled": false,
       "authenticationMode": "None",
+      "remoteDebugMachine": "",
       "nativeDebugging": false
-    },
-    "newProfile1": {
-      "commandName": "Project",
-      "commandLineArgs": "sub"
     }
   }
 }
