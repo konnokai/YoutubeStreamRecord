@@ -261,10 +261,39 @@ namespace Youtube_Stream_Record
                         redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName }));
                         await redis.GetDatabase().SetAddAsync("youtube.nowRecord", videoId);
 
+                        CancellationTokenSource cancellationToken = new CancellationTokenSource();
+                        CancellationToken token = cancellationToken.Token;
+
+                        var task = Task.Run(() =>
+                        {
+                            int waitTime = (5 * 60 * 60) + (59 * 60);
+                            do
+                            {
+                                waitTime -= 1;
+                                Task.Delay(1000);
+                                if (token.IsCancellationRequested)
+                                    return;
+                            } while (waitTime >= 0);
+
+                            redis.GetSubscriber().Publish("youtube.record", videoId);
+                        });
+
                         Log.Info($"存檔名稱: {fileName}");
-                        Process.Start("yt-dlp", $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser firefox --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts").WaitForExit();
+                        var process = Process.Start("yt-dlp", $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser firefox --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts");
+                        
+                        process.BeginOutputReadLine();
+                        process.OutputDataReceived += (sender, e) =>
+                        {
+                            if (string.IsNullOrEmpty(e.Data)) return;
+                            Console.SetCursorPosition(0, Console.CursorTop - 1);
+                            Console.WriteLine(e.Data);
+                        };
+                        process.WaitForExit();
+                        process.CancelOutputRead();
+
                         isClose = true;
                         Log.Info($"錄影結束");
+                        cancellationToken.Cancel();
 
                         #region 確定直播是否結束
                         if (IsLiveEnd(videoId)) break;
