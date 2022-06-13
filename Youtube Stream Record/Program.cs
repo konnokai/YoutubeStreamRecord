@@ -264,13 +264,13 @@ namespace Youtube_Stream_Record
                         CancellationTokenSource cancellationToken = new CancellationTokenSource();
                         CancellationToken token = cancellationToken.Token;
 
+                        int waitTime = (5 * 60 * 60) + (59 * 60);
                         var task = Task.Run(() =>
                         {
-                            int waitTime = (5 * 60 * 60) + (59 * 60);
                             do
                             {
-                                waitTime -= 1;
-                                Task.Delay(1000);
+                                waitTime--;
+                                Thread.Sleep(1000);
                                 if (token.IsCancellationRequested)
                                     return;
                             } while (waitTime >= 0);
@@ -279,38 +279,39 @@ namespace Youtube_Stream_Record
                         });
 
                         Log.Info($"存檔名稱: {fileName}");
-                        var process = Process.Start("yt-dlp", $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser firefox --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts");
-                        
-                        process.BeginOutputReadLine();
-                        process.OutputDataReceived += (sender, e) =>
-                        {
-                            if (string.IsNullOrEmpty(e.Data)) return;
-                            Console.SetCursorPosition(0, Console.CursorTop - 1);
-                            Console.WriteLine(e.Data);
-                        };
+                        var process = new Process();
+#if RELEASE
+                        process.StartInfo.FileName = "yt-dlp";
+                        process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser firefox --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts";
+#else
+                        process.StartInfo.FileName = "yt-dlp_min.exe";
+                        process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser chrome --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts";
+#endif
+                        process.Start();
                         process.WaitForExit();
-                        process.CancelOutputRead();
 
                         isClose = true;
                         Log.Info($"錄影結束");
                         cancellationToken.Cancel();
 
-                        #region 確定直播是否結束
+#region 確定直播是否結束
                         if (IsLiveEnd(videoId)) break;
 
                         //Log.Warn($"直播尚未結束，重新錄影");
-                        #endregion
+#endregion
                     } while (!isClose);
-                    #endregion
+#endregion
                 } while (isLoop && !isClose);
 
-                #region 5. 如果直播被砍檔就移到其他地方保存
+#region 5. 如果直播被砍檔就移到其他地方保存
                 if (!string.IsNullOrEmpty(fileName) && isDelLive)
                 {
+                    Log.Info($"已刪檔直播，移動資料");
                     foreach (var item in Directory.GetFiles(outputPath, $"{fileName}.*"))
                     {
                         try
                         {
+                            Log.Info(item);
                             File.Move(item, $"{unarchivedOutputPath}{Path.GetFileName(item)}");
                         }
                         catch (Exception ex) 
@@ -319,7 +320,7 @@ namespace Youtube_Stream_Record
                         }
                     }
                 }
-                #endregion
+#endregion
                 await redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
             }
             return true;
@@ -327,7 +328,7 @@ namespace Youtube_Stream_Record
 
         private static Status WaitForScheduledStream(string videoId)
         {
-            #region 取得直播排程的開始時間
+#region 取得直播排程的開始時間
             var video = yt.Videos.List("liveStreamingDetails");
             video.Id = videoId;
             var videoResult = video.Execute();
@@ -336,9 +337,9 @@ namespace Youtube_Stream_Record
                 Log.Warn($"{videoId} 待機所已刪除，重新檢測");
                 return Status.Deleted;
             }
-            #endregion
+#endregion
 
-            #region 檢查直播排程時間
+#region 檢查直播排程時間
             DateTime streamScheduledStartTime;
             try
             {
@@ -364,11 +365,11 @@ namespace Youtube_Stream_Record
                 Log.Warn("該直播已結束，已略過");
                 return Status.IsChatRoom;
             }
-            #endregion
+#endregion
 
             //redis.GetSubscriber().Publish("youtube.newstream", videoId);
 
-            #region 等待直播排程時間抵達...
+#region 等待直播排程時間抵達...
             Log.Info($"直播開始時間: {streamScheduledStartTime}");
             if (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now)
             {
@@ -402,7 +403,7 @@ namespace Youtube_Stream_Record
                     }
                 } while (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now);
 
-                #region 開始錄製直播前，再次檢查是否有更改直播時間或是刪除待機所
+#region 開始錄製直播前，再次檢查是否有更改直播時間或是刪除待機所
                 videoResult = video.Execute();
                 if (videoResult.Items.Count == 0)
                 {
@@ -418,9 +419,9 @@ namespace Youtube_Stream_Record
                         return WaitForScheduledStream(videoId);
                     }
                 }
-                #endregion
+#endregion
             }
-            #endregion
+#endregion
 
             return Status.Ready;
         }
@@ -450,6 +451,7 @@ namespace Youtube_Stream_Record
             return false;
         }
 
+        static Timer autoDeleteArchivedTimer;
         private static async Task<bool> SubRecord(string outputPath, string unarchivedOutputPath, bool autoDeleteArchived)
         {
             try
@@ -494,7 +496,7 @@ namespace Youtube_Stream_Record
             Log.Info("已訂閱Redis頻道");
             if (autoDeleteArchived)
             {
-                _ = new Timer((obj) => 
+                autoDeleteArchivedTimer = new Timer((obj) => 
                 {
                     try
                     {
