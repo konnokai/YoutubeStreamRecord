@@ -307,7 +307,7 @@ namespace Youtube_Stream_Record
                 if (!string.IsNullOrEmpty(fileName) && isDelLive)
                 {
                     Log.Info($"已刪檔直播，移動資料");
-                    foreach (var item in Directory.GetFiles(outputPath, $"{fileName}.*"))
+                    foreach (var item in Directory.GetFiles(outputPath, $"*{videoId}.mp4"))
                     {
                         try
                         {
@@ -489,6 +489,11 @@ namespace Youtube_Stream_Record
             sub.Subscribe("youtube.test", (channel, nope) =>
             {
                 Log.Info($"已接收測試請求");
+            });
+
+            sub.Subscribe("youtube.deletestream", (channel, videoId) =>
+            {
+                Log.Warn($"已刪檔直播: {videoId}");
             });
 
             Log.Info($"訂閱模式，保存路徑: {outputPath}");
