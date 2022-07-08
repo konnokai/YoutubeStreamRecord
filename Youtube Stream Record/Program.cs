@@ -313,6 +313,7 @@ namespace Youtube_Stream_Record
                         {
                             Log.Info(item);
                             File.Move(item, $"{unarchivedOutputPath}{Path.GetFileName(item)}");
+                            redis.GetSubscriber().Publish("youtube.unarchived", videoId);
                         }
                         catch (Exception ex) 
                         {
@@ -491,7 +492,7 @@ namespace Youtube_Stream_Record
                 Log.Info($"已接收測試請求");
             });
 
-            sub.Subscribe("youtube.deletestream", (channel, videoId) =>
+            sub.Subscribe("youtube.unarchived", (channel, videoId) =>
             {
                 Log.Warn($"已刪檔直播: {videoId}");
             });
