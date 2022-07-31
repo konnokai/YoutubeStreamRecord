@@ -55,6 +55,7 @@ namespace Youtube_Stream_Record
         private static async Task<bool> StartRecord(string Id, string outputPath, string unarchivedOutputPath, uint startStreamLoopTime, uint checkNextStreamTime, bool isLoop = false)
         {
             string channelId, channelTitle, videoId = "";
+            Id = Id.Replace("@", "-");
 
             #region 初始化
             try
@@ -477,7 +478,7 @@ namespace Youtube_Stream_Record
                 var channelData = await GetChannelDataByVideoIdAsync(videoId);
                 Log.Info(channelData.ChannelId + " / " + channelData.ChannelTitle);
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once {videoId} -o \"{outputPath}\" -u \"{unarchivedOutputPath}\"");
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once {videoId.ToString().Replace("-","@")} -o \"{outputPath}\" -u \"{unarchivedOutputPath}\"");
                 else Process.Start(new ProcessStartInfo()
                 {
                     FileName = "dotnet",
