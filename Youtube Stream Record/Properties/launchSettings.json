@@ -9,6 +9,14 @@
       "authenticationMode": "None",
       "remoteDebugMachine": "",
       "nativeDebugging": false
+    },
+    "Docker": {
+      "commandName": "Docker",
+      "commandLineArgs": "sub -o \".\" -u \".\"",
+      "environmentVariables": {
+        "RedisOption": "192.168.44.128,password=1qaz2wsx3edc,syncTimeout=3000",
+        "GoogleApiKey": "AIzaSyDSoca8DJWgVZsbSDT1EKhRdaJLVtw2-WY"
+      }
     }
   }
 }

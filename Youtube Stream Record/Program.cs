@@ -6,14 +6,15 @@ using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO;
 
 namespace Youtube_Stream_Record
 {
@@ -160,7 +161,7 @@ namespace Youtube_Stream_Record
             string chatRoomId = "";
             #endregion
 
-            using (WebClient webClient = new WebClient())
+            using (HttpClient httpClient = new HttpClient())
             {
                 string fileName = "";
                 do
@@ -175,7 +176,7 @@ namespace Youtube_Stream_Record
                         {
                             try
                             {
-                                web = webClient.DownloadString($"https://www.youtube.com/channel/{channelId}/live");
+                                web = await httpClient.GetStringAsync($"https://www.youtube.com/channel/{channelId}/live");
                             }
                             catch (Exception ex)
                             {
@@ -186,8 +187,8 @@ namespace Youtube_Stream_Record
                                 }
 
                                 Log.Error("Stage1");
-                                Log.Error(ex.Message);
-                                Log.Error(ex.StackTrace);
+                                Log.Error(ex.ToString());
+                                if (ex.InnerException != null) Log.Error(ex.InnerException.ToString());
                                 Thread.Sleep(5000);
                                 continue;
                             }
@@ -347,9 +348,9 @@ namespace Youtube_Stream_Record
                         if (IsLiveEnd(videoId, isDisableRedis)) break;
 
                         //Log.Warn($"直播尚未結束，重新錄影");
-#endregion
+                        #endregion
                     } while (!isClose);
-#endregion
+                    #endregion
                 } while (isLoop && !isClose);
 
                 #region 5. 如果直播被砍檔就移到其他地方保存
@@ -364,7 +365,7 @@ namespace Youtube_Stream_Record
                             File.Move(item, $"{unarchivedOutputPath}{Path.GetFileName(item)}");
                             if (!isDisableRedis) redis.GetSubscriber().Publish("youtube.unarchived", videoId);                            
                         }
-                        catch (Exception ex) 
+                        catch (Exception ex)
                         {
                             File.AppendAllText($"{tempPath}{fileName}_err.txt", ex.ToString());
                         }
