@@ -6,15 +6,15 @@ using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Management;
 using System.Net;
+using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO;
-using System.Net.Http;
 
 namespace Youtube_Stream_Record
 {
@@ -296,13 +296,13 @@ namespace Youtube_Stream_Record
                         Log.Info($"錄影結束");
                         cancellationToken.Cancel();
 
-#region 確定直播是否結束
+                        #region 確定直播是否結束
                         if (IsLiveEnd(videoId)) break;
 
                         //Log.Warn($"直播尚未結束，重新錄影");
-#endregion
+                        #endregion
                     } while (!isClose);
-#endregion
+                    #endregion
                 } while (isLoop && !isClose);
 
                 #region 5. 如果直播被砍檔就移到其他地方保存
@@ -317,7 +317,7 @@ namespace Youtube_Stream_Record
                             File.Move(item, $"{unarchivedOutputPath}{Path.GetFileName(item)}");
                             redis.GetSubscriber().Publish("youtube.unarchived", videoId);
                         }
-                        catch (Exception ex) 
+                        catch (Exception ex)
                         {
                             File.AppendAllText($"{outputPath}{fileName}_err.txt", ex.ToString());
                         }
