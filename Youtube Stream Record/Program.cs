@@ -47,9 +47,9 @@ namespace Youtube_Stream_Record
 
             var result = Parser.Default.ParseArguments<LoopOptions, OnceOptions, SubOptions>(args)
                 .MapResult(
-                (LoopOptions lo)  => StartRecord(lo.ChannelId, lo.OutputPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true).Result,
-                (OnceOptions oo) => StartRecord(oo.ChannelId, oo.OutputPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime).Result,
-                (SubOptions so) => SubRecord(so.OutputPath, so.UnarchivedOutputPath, so.AutoDeleteArchived).Result,
+                (LoopOptions lo)  => StartRecord(lo.ChannelId, lo.OutputPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true).GetAwaiter().GetResult(),
+                (OnceOptions oo) => StartRecord(oo.ChannelId, oo.OutputPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime).GetAwaiter().GetResult(),
+                (SubOptions so) => SubRecord(so.OutputPath, so.UnarchivedOutputPath, so.AutoDeleteArchived).GetAwaiter().GetResult(),
                 Error => false);
         }
 
