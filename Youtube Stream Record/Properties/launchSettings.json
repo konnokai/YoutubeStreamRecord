@@ -9,6 +9,9 @@
       "authenticationMode": "None",
       "remoteDebugMachine": "",
       "nativeDebugging": false
+    },
+    "Docker": {
+      "commandName": "Docker"
     }
   }
 }
