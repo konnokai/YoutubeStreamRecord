@@ -26,6 +26,7 @@ namespace Youtube_Stream_Record
         static ConnectionMultiplexer redis;
         static BotConfig botConfig = new();
         enum Status { Ready, Deleted, IsClose, IsChatRoom, IsChangeTime };
+        enum ResultType { Loop, Once, Sub, Error, None }
 
         static void Main(string[] args)
         {
@@ -44,29 +45,45 @@ namespace Youtube_Stream_Record
                 ApiKey = botConfig.GoogleApiKey,
             });
 
+#if DEBUG
+            Console.WriteLine(string.Join(' ', args));
+#endif
+
             var result = Parser.Default.ParseArguments<LoopOptions, OnceOptions, SubOptions>(args)
                 .MapResult(
-                (LoopOptions lo)  => StartRecord(lo.ChannelId, lo.OutputPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true).Result,
-                (OnceOptions oo) => StartRecord(oo.ChannelId, oo.OutputPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime).Result,
-                (SubOptions so) => SubRecord(so.OutputPath, so.UnarchivedOutputPath, so.AutoDeleteArchived).Result,
-                Error => false);
+                (LoopOptions lo)  => StartRecord(lo.ChannelId, lo.OutputPath, lo.TempPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true, lo.DisableRedis,lo.DisableLiveFromStart).Result,
+                (OnceOptions oo) => StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime, false, oo.DisableRedis, oo.DisableLiveFromStart).Result,
+                (SubOptions so) => SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.AutoDeleteArchived,so.DisableLiveFromStart).Result,
+                Error => ResultType.None);
+
+#if DEBUG            
+            if (result == ResultType.Error || result == ResultType.None)
+            {
+                Console.WriteLine($"({result}) Press any key to exit...");
+                Console.ReadKey();
+            }
+#endif
         }
 
-        private static async Task<bool> StartRecord(string Id, string outputPath, string unarchivedOutputPath, uint startStreamLoopTime, uint checkNextStreamTime, bool isLoop = false)
+        private static async Task<ResultType> StartRecord(string Id, string outputPath,string tempPath, string unarchivedOutputPath, uint startStreamLoopTime, uint checkNextStreamTime, bool isLoop = false, bool isDisableRedis = false, bool isDisableLiveFromStart = false)
         {
             string channelId, channelTitle, videoId = "";
             Id = Id.Replace("@", "-");
 
             #region 初始化
-            try
+            if (!isDisableRedis)
             {
-                RedisConnection.Init(botConfig.RedisOption);
-                redis = RedisConnection.Instance.ConnectionMultiplexer;
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Redis連線錯誤，請確認伺服器是否已開啟");
-                Log.Error(ex.Message);
+                try
+                {
+                    RedisConnection.Init(botConfig.RedisOption);
+                    redis = RedisConnection.Instance.ConnectionMultiplexer;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Redis連線錯誤，請確認伺服器是否已開啟");
+                    Log.Error(ex.Message);
+                    return ResultType.Error;
+                }
             }
 
             if (Id.Length == 11)
@@ -80,7 +97,7 @@ namespace Youtube_Stream_Record
                 if (channelId == "")
                 {
                     Log.Error($"{videoId} 不存在直播");
-                    return true;
+                    return ResultType.Error;
                 }
             }
             else
@@ -92,12 +109,12 @@ namespace Youtube_Stream_Record
                 catch (FormatException fex)
                 {
                     Log.Error (fex.Message);
-                    return true;
+                    return ResultType.Error;
                 }
                 catch (ArgumentNullException)
                 {
                     Log.Error("網址不可空白");
-                    return true;
+                    return ResultType.Error;
                 }
 
                 var result = await GetChannelDataByChannelIdAsync(channelId);
@@ -106,7 +123,7 @@ namespace Youtube_Stream_Record
                 if (channelTitle == "")
                 {
                     Log.Error($"{channelId} 不存在頻道");
-                    return true;
+                    return ResultType.Error;
                 }
             }
 
@@ -119,8 +136,16 @@ namespace Youtube_Stream_Record
                 else outputPath += "/";
             }
 
+            if (!tempPath.EndsWith("/") && !tempPath.EndsWith("\\"))
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) tempPath += "\\";
+                else tempPath += "/";
+            }
+
             outputPath = outputPath.Replace("\"", "");
+            tempPath = tempPath.Replace("\"", "");
             Log.Info($"輸出路徑: {outputPath}");
+            Log.Info($"暫存路徑: {tempPath}");
             Log.Info($"檢測開台的間隔: {startStreamLoopTime}秒");
             if (videoId == "")
             {
@@ -128,6 +153,9 @@ namespace Youtube_Stream_Record
                 if (isLoop) Log.Info("已設定為重複錄製模式");
             }
             else Log.Info("單一直播錄影模式");
+
+            if (isDisableLiveFromStart)
+                Log.Info("不自動從頭開始錄影");
 
             string chatRoomId = "";
             #endregion
@@ -154,7 +182,7 @@ namespace Youtube_Stream_Record
                                 if (ex.Message.Contains("404"))
                                 {
                                     Log.Error("頻道Id錯誤，請確認是否正確");
-                                    return true;
+                                    return ResultType.Error;
                                 }
 
                                 Log.Error("Stage1");
@@ -174,7 +202,7 @@ namespace Youtube_Stream_Record
                                 {
                                     Log.Debug($"剩餘: {num}秒");
                                     num--;
-                                    if (isClose) return true;
+                                    if (isClose) return ResultType.None;
                                     Thread.Sleep(1000);
                                 } while (num >= 0);
                             }
@@ -192,9 +220,12 @@ namespace Youtube_Stream_Record
                     switch (WaitForScheduledStream(videoId))
                     {
                         case Status.IsClose:
-                            return true;
+                            return ResultType.None;
                         case Status.Deleted:
-                            redis.GetSubscriber().Publish("youtube.deletestream", videoId);
+                            if (!isDisableRedis)
+                            {
+                                redis.GetSubscriber().Publish("youtube.deletestream", videoId);
+                            }
                             continue;
                         case Status.IsChatRoom:
                             chatRoomId = videoId;
@@ -253,41 +284,58 @@ namespace Youtube_Stream_Record
                         //} while (true);
                         #endregion
 
-                        if (IsLiveEnd(videoId)) break;
+                        if (IsLiveEnd(videoId, isDisableRedis)) break;
 
                         fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
+                        tempPath += $"{DateTime.Now:yyyyMMdd}{GetEnvSlash()}";
+                        if (!Directory.Exists(tempPath)) Directory.CreateDirectory(tempPath);
                         outputPath += $"{DateTime.Now:yyyyMMdd}{GetEnvSlash()}";
                         if (!Directory.Exists(outputPath)) Directory.CreateDirectory(outputPath);
 
-                        redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName }));
-                        await redis.GetDatabase().SetAddAsync("youtube.nowRecord", videoId);
+                        if (!isDisableRedis)
+                        {
+                            redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName }));
+                            await redis.GetDatabase().SetAddAsync("youtube.nowRecord", videoId);
+                        }
 
                         CancellationTokenSource cancellationToken = new CancellationTokenSource();
                         CancellationToken token = cancellationToken.Token;
 
-                        int waitTime = (5 * 60 * 60) + (59 * 60);
-                        var task = Task.Run(() =>
+                        string arguments = "--live-from-start -f bestvideo+bestaudio";
+                        if (isDisableLiveFromStart)
                         {
-                            do
+                            arguments = "-f b";
+                            int waitTime = (5 * 60 * 60) + (59 * 60);
+                            var task = Task.Run(() =>
                             {
-                                waitTime--;
-                                Thread.Sleep(1000);
-                                if (token.IsCancellationRequested)
-                                    return;
-                            } while (waitTime >= 0);
+                                do
+                                {
+                                    waitTime--;
+                                    Thread.Sleep(1000);
+                                    if (token.IsCancellationRequested)
+                                        return;
+                                } while (waitTime >= 0);
 
-                            redis.GetSubscriber().Publish("youtube.record", videoId);
-                        });
+                                if (!isDisableRedis) redis.GetSubscriber().Publish("youtube.record", videoId);
+                            });
+                        }
 
                         Log.Info($"存檔名稱: {fileName}");
                         var process = new Process();
 #if RELEASE
                         process.StartInfo.FileName = "yt-dlp";
-                        process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser firefox --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts";
+                        string browser = "firefox";
 #else
                         process.StartInfo.FileName = "yt-dlp_min.exe";
-                        process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{outputPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser chrome --embed-thumbnail --embed-metadata --mark-watched --hls-use-mpegts";
+                        string browser = "chrome";
 #endif
+
+                        // --live-from-start 太吃硬碟隨機讀寫
+                        // --embed-metadata --embed-thumbnail
+                        process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser {browser} --mark-watched {arguments}";
+
+                        Log.Info(process.StartInfo.Arguments);
+                        
                         process.Start();
                         process.WaitForExit();
 
@@ -296,7 +344,7 @@ namespace Youtube_Stream_Record
                         cancellationToken.Cancel();
 
 #region 確定直播是否結束
-                        if (IsLiveEnd(videoId)) break;
+                        if (IsLiveEnd(videoId, isDisableRedis)) break;
 
                         //Log.Warn($"直播尚未結束，重新錄影");
 #endregion
@@ -304,33 +352,49 @@ namespace Youtube_Stream_Record
 #endregion
                 } while (isLoop && !isClose);
 
-#region 5. 如果直播被砍檔就移到其他地方保存
+                #region 5. 如果直播被砍檔就移到其他地方保存
                 if (!string.IsNullOrEmpty(fileName) && isDelLive)
                 {
                     Log.Info($"已刪檔直播，移動資料");
-                    foreach (var item in Directory.GetFiles(outputPath, $"*{videoId}.mp4"))
+                    foreach (var item in Directory.GetFiles(tempPath, $"*{videoId}.???"))
                     {
                         try
                         {
                             Log.Info(item);
                             File.Move(item, $"{unarchivedOutputPath}{Path.GetFileName(item)}");
-                            redis.GetSubscriber().Publish("youtube.unarchived", videoId);
+                            if (!isDisableRedis) redis.GetSubscriber().Publish("youtube.unarchived", videoId);                            
                         }
                         catch (Exception ex) 
                         {
-                            File.AppendAllText($"{outputPath}{fileName}_err.txt", ex.ToString());
+                            File.AppendAllText($"{tempPath}{fileName}_err.txt", ex.ToString());
                         }
                     }
                 }
-#endregion
-                await redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
+                #endregion
+                else if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath))
+                {
+                    Log.Info("將直播轉移至保存點");
+                    foreach (var item in Directory.GetFiles(tempPath, $"*{videoId}.???"))
+                    {
+                        try
+                        {
+                            Log.Info(item);
+                            File.Move(item, $"{outputPath}{Path.GetFileName(item)}");
+                        }
+                        catch (Exception ex)
+                        {
+                            File.AppendAllText($"{tempPath}{fileName}_err.txt", ex.ToString());
+                        }
+                    }
+                }
+                if (!isDisableRedis) await redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
             }
-            return true;
+            return (isLoop) ? ResultType.Loop : ResultType.Once;
         }
 
         private static Status WaitForScheduledStream(string videoId)
         {
-#region 取得直播排程的開始時間
+            #region 取得直播排程的開始時間
             var video = yt.Videos.List("liveStreamingDetails");
             video.Id = videoId;
             var videoResult = video.Execute();
@@ -339,9 +403,9 @@ namespace Youtube_Stream_Record
                 Log.Warn($"{videoId} 待機所已刪除，重新檢測");
                 return Status.Deleted;
             }
-#endregion
+            #endregion
 
-#region 檢查直播排程時間
+            #region 檢查直播排程時間
             DateTime streamScheduledStartTime;
             try
             {
@@ -367,11 +431,11 @@ namespace Youtube_Stream_Record
                 Log.Warn("該直播已結束，已略過");
                 return Status.IsChatRoom;
             }
-#endregion
+            #endregion
 
             //redis.GetSubscriber().Publish("youtube.newstream", videoId);
 
-#region 等待直播排程時間抵達...
+            #region 等待直播排程時間抵達...
             Log.Info($"直播開始時間: {streamScheduledStartTime}");
             if (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now)
             {
@@ -405,7 +469,7 @@ namespace Youtube_Stream_Record
                     }
                 } while (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now);
 
-#region 開始錄製直播前，再次檢查是否有更改直播時間或是刪除待機所
+                #region 開始錄製直播前，再次檢查是否有更改直播時間或是刪除待機所
                 videoResult = video.Execute();
                 if (videoResult.Items.Count == 0)
                 {
@@ -421,14 +485,14 @@ namespace Youtube_Stream_Record
                         return WaitForScheduledStream(videoId);
                     }
                 }
-#endregion
+                #endregion
             }
-#endregion
+            #endregion
 
             return Status.Ready;
         }
 
-        private static bool IsLiveEnd(string videoId)
+        private static bool IsLiveEnd(string videoId, bool isDisableRedis)
         {
             var video = yt.Videos.List("snippet");
             video.Id = videoId;
@@ -439,12 +503,14 @@ namespace Youtube_Stream_Record
                 if (videoResult2.Items.Count == 0)
                 {
                     isDelLive = true;
-                    redis.GetSubscriber().Publish("youtube.deletestream", videoId);
+                    if (!isDisableRedis)
+                        redis.GetSubscriber().Publish("youtube.deletestream", videoId);
                     return true;
                 }
                 if (videoResult2.Items[0].Snippet.LiveBroadcastContent == "none")
                 {
-                    redis.GetSubscriber().Publish("youtube.endstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = $"youtube_{videoResult2.Items[0].Snippet.ChannelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}" }));
+                    if (!isDisableRedis)
+                        redis.GetSubscriber().Publish("youtube.endstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = $"youtube_{videoResult2.Items[0].Snippet.ChannelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}" }));
                     return true;
                 }
             }
@@ -454,7 +520,7 @@ namespace Youtube_Stream_Record
         }
 
         static Timer autoDeleteArchivedTimer;
-        private static async Task<bool> SubRecord(string outputPath, string unarchivedOutputPath, bool autoDeleteArchived)
+        private static async Task<ResultType> SubRecord(string outputPath, string tempPath, string unarchivedOutputPath, bool autoDeleteArchived, bool isDisableLiveFromStart = false)
         {
             try
             {
@@ -465,7 +531,7 @@ namespace Youtube_Stream_Record
             {
                 Log.Error("Redis連線錯誤，請確認伺服器是否已開啟");
                 Log.Error(ex.Message);
-                return true;
+                return ResultType.Error;
             }
 
             if (!outputPath.EndsWith(GetEnvSlash())) outputPath += GetEnvSlash();
@@ -478,11 +544,12 @@ namespace Youtube_Stream_Record
                 var channelData = await GetChannelDataByVideoIdAsync(videoId);
                 Log.Info(channelData.ChannelId + " / " + channelData.ChannelTitle);
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once {videoId.ToString().Replace("-","@")} -o \"{outputPath}\" -u \"{unarchivedOutputPath}\"");
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once {videoId.ToString().Replace("-","@")} -o \"{outputPath}\" -t \"{tempPath}\" -u \"{unarchivedOutputPath}\"" + 
+                    (isDisableLiveFromStart ? " --disable-live-from-start" : ""));
                 else Process.Start(new ProcessStartInfo()
                 {
                     FileName = "dotnet",
-                    Arguments = $"\"Youtube Stream Record.dll\" once {videoId.ToString().Replace("-", "@")} -o \"{outputPath}\" -u \"{unarchivedOutputPath}\"",
+                    Arguments = $"\"Youtube Stream Record.dll\" once {videoId.ToString().Replace("-", "@")} -o \"{outputPath}\\\" -t \"{tempPath}\\\" -u \"{unarchivedOutputPath}\\\"" + (isDisableLiveFromStart ? " --disable-live-from-start" : ""),
                     CreateNoWindow = false,
                     UseShellExecute = true
                 });
@@ -520,6 +587,18 @@ namespace Youtube_Stream_Record
                                 Log.Info($"已刪除: {item}");
                             }
                         }
+                        list = Directory.GetDirectories(tempPath, "202?????", SearchOption.TopDirectoryOnly);
+                        foreach (var item in list)
+                        {
+                            var regexResult = regex.Match(item);
+                            if (!regexResult.Success) continue;
+
+                            if (DateTime.Now.Subtract(Convert.ToDateTime($"{regexResult.Groups[1]}/{regexResult.Groups[2]}/{regexResult.Groups[3]}")) > TimeSpan.FromDays(14))
+                            {
+                                Directory.Delete(item, true);
+                                Log.Info($"已刪除: {item}");
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -529,13 +608,16 @@ namespace Youtube_Stream_Record
                 Log.Warn("已開啟自動刪除14天後的存檔");
             }
 
+            if (isDisableLiveFromStart)
+                Log.Info("不自動從頭開始錄影");
+
             do { await Task.Delay(1000); }
             while (!isClose);
 
             await sub.UnsubscribeAllAsync();
             Log.Info("已取消訂閱Redis頻道");
 
-            return true;
+            return ResultType.Sub;
         }
 
         private static string GetEnvSlash()
@@ -662,54 +744,46 @@ namespace Youtube_Stream_Record
             }
         }
 
-        [Verb("loop", HelpText = "重複錄影")]
-        public class LoopOptions
-        {
-            [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
-            public string ChannelId { get; set; }
-
-            [Value(1, Required = false, HelpText = "檢測開台的間隔")]
-            public uint StartStreamLoopTime { get; set; } = 30;
-
-            [Value(2, Required = false, HelpText = "檢測下個直播的間隔")]
-            public uint CheckNextStreamTime { get; set; } = 600;
-
-            [Option('o', "output", Required = false, HelpText = "輸出路徑")]
-            public string OutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
-
-            [Option('u', "unarchivedoutput", Required = true, HelpText = "刪檔直播輸出路徑")]
-            public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
-        }
-
-        [Verb("once", HelpText = "單次錄影")]
-        public class OnceOptions
-        {
-            [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
-            public string ChannelId { get; set; }
-
-            [Value(1, Required = false, HelpText = "檢測開台的間隔")]
-            public uint StartStreamLoopTime { get; set; } = 30;
-
-            [Value(2, Required = false, HelpText = "檢測下個直播的間隔")]
-            public uint CheckNextStreamTime { get; set; } = 600;
-
-            [Option('o', "output", Required = false, HelpText = "輸出路徑")]
-            public string OutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
-
-            [Option('u', "unarchivedoutput", Required = true, HelpText = "刪檔直播輸出路徑")]
-            public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
-        }
-        
-        [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
-        public class SubOptions
+        public class RequiredOptions
         {
             [Option('o', "output", Required = true, HelpText = "輸出路徑")]
             public string OutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
 
-            [Option('u', "unarchivedoutput", Required = true, HelpText = "刪檔直播輸出路徑")]
+            [Option('t', "temp-path", Required = false, HelpText = "暫存路徑")]
+            public string TempPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
+
+            [Option('u', "unarchived-output", Required = true, HelpText = "刪檔直播輸出路徑")]
             public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
 
-            [Option('d', "audodelete", Required = false, HelpText = "刪檔直播輸出路徑", Default = false)]
+            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無SSD且須大量同時錄影請開啟本選項")]
+            public bool DisableLiveFromStart { get; set; } = false;
+        }
+
+        public class RecordOptions : RequiredOptions
+        {
+            [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
+            public string ChannelId { get; set; }
+
+            [Value(1, Required = false, HelpText = "檢測開台的間隔")]
+            public uint StartStreamLoopTime { get; set; } = 30;
+
+            [Value(2, Required = false, HelpText = "檢測下個直播的間隔")]
+            public uint CheckNextStreamTime { get; set; } = 600;
+
+            [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
+            public bool DisableRedis { get; set; } = false;
+        }
+
+        [Verb("loop", HelpText = "重複錄影")]
+        public class LoopOptions : RecordOptions { }
+
+        [Verb("once", HelpText = "單次錄影")]
+        public class OnceOptions : RecordOptions { }
+        
+        [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
+        public class SubOptions : RequiredOptions
+        {
+            [Option('d', "audo-delete", Required = false, HelpText = "刪檔直播輸出路徑", Default = false)]
             public bool AutoDeleteArchived { get; set; }
         }
     }

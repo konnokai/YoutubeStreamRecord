@@ -2,7 +2,7 @@
   "profiles": {
     "Youtube Stream Record": {
       "commandName": "Project",
-      "commandLineArgs": "once WmYncBBjGUQ -o \".\" -u \".\"",
+      "commandLineArgs": "once d6NI4FdRns4 -o \".\" -u \".\" -s",
       "workingDirectory": ".\\bin\\Debug\\net5.0",
       "sqlDebugging": false,
       "remoteDebugEnabled": false,
