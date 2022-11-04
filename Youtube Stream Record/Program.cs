@@ -14,6 +14,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
+using System.Net.Http;
 
 namespace Youtube_Stream_Record
 {
@@ -132,7 +133,7 @@ namespace Youtube_Stream_Record
             string chatRoomId = "";
             #endregion
 
-            using (WebClient webClient = new WebClient())
+            using (HttpClient httpClient = new HttpClient())
             {
                 string fileName = "";
                 do
@@ -147,7 +148,7 @@ namespace Youtube_Stream_Record
                         {
                             try
                             {
-                                web = webClient.DownloadString($"https://www.youtube.com/channel/{channelId}/live");
+                                web = await httpClient.GetStringAsync($"https://www.youtube.com/channel/{channelId}/live");
                             }
                             catch (Exception ex)
                             {
@@ -158,8 +159,8 @@ namespace Youtube_Stream_Record
                                 }
 
                                 Log.Error("Stage1");
-                                Log.Error(ex.Message);
-                                Log.Error(ex.StackTrace);
+                                Log.Error(ex.ToString());
+                                if (ex.InnerException != null) Log.Error(ex.InnerException.ToString());
                                 Thread.Sleep(5000);
                                 continue;
                             }
@@ -304,7 +305,7 @@ namespace Youtube_Stream_Record
 #endregion
                 } while (isLoop && !isClose);
 
-#region 5. 如果直播被砍檔就移到其他地方保存
+                #region 5. 如果直播被砍檔就移到其他地方保存
                 if (!string.IsNullOrEmpty(fileName) && isDelLive)
                 {
                     Log.Info($"已刪檔直播，移動資料");
@@ -322,7 +323,7 @@ namespace Youtube_Stream_Record
                         }
                     }
                 }
-#endregion
+                #endregion
                 await redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
             }
             return true;
@@ -330,7 +331,7 @@ namespace Youtube_Stream_Record
 
         private static Status WaitForScheduledStream(string videoId)
         {
-#region 取得直播排程的開始時間
+            #region 取得直播排程的開始時間
             var video = yt.Videos.List("liveStreamingDetails");
             video.Id = videoId;
             var videoResult = video.Execute();
@@ -339,9 +340,9 @@ namespace Youtube_Stream_Record
                 Log.Warn($"{videoId} 待機所已刪除，重新檢測");
                 return Status.Deleted;
             }
-#endregion
+            #endregion
 
-#region 檢查直播排程時間
+            #region 檢查直播排程時間
             DateTime streamScheduledStartTime;
             try
             {
@@ -367,11 +368,11 @@ namespace Youtube_Stream_Record
                 Log.Warn("該直播已結束，已略過");
                 return Status.IsChatRoom;
             }
-#endregion
+            #endregion
 
             //redis.GetSubscriber().Publish("youtube.newstream", videoId);
 
-#region 等待直播排程時間抵達...
+            #region 等待直播排程時間抵達...
             Log.Info($"直播開始時間: {streamScheduledStartTime}");
             if (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now)
             {
@@ -405,7 +406,7 @@ namespace Youtube_Stream_Record
                     }
                 } while (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now);
 
-#region 開始錄製直播前，再次檢查是否有更改直播時間或是刪除待機所
+                #region 開始錄製直播前，再次檢查是否有更改直播時間或是刪除待機所
                 videoResult = video.Execute();
                 if (videoResult.Items.Count == 0)
                 {
@@ -421,9 +422,9 @@ namespace Youtube_Stream_Record
                         return WaitForScheduledStream(videoId);
                     }
                 }
-#endregion
+                #endregion
             }
-#endregion
+            #endregion
 
             return Status.Ready;
         }
