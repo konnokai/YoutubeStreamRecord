@@ -410,10 +410,10 @@ namespace Youtube_Stream_Record
             DateTime streamScheduledStartTime;
             try
             {
-               if (videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime != null) 
-                    streamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime.ConvertToDateTime();
+               if (videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime.HasValue) 
+                    streamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime.Value;
                else
-                    streamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ActualStartTime.ConvertToDateTime();
+                    streamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ActualStartTime.Value;
             }
             catch (ArgumentNullException)
             {
@@ -458,7 +458,7 @@ namespace Youtube_Stream_Record
                             return Status.Deleted;
                         }
 
-                        var newstreamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime.ConvertToDateTime();
+                        var newstreamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime.Value;
                         if (newstreamScheduledStartTime != streamScheduledStartTime)
                         {
                             Log.Warn($"{videoId} 時間已變更");
@@ -480,7 +480,7 @@ namespace Youtube_Stream_Record
 
                 if (videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime != null)
                 {
-                    streamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime.ConvertToDateTime();
+                    streamScheduledStartTime = videoResult.Items[0].LiveStreamingDetails.ScheduledStartTime.Value;
                     if (streamScheduledStartTime.AddMinutes(-2) > DateTime.Now)
                     {
                         return WaitForScheduledStream(videoId);

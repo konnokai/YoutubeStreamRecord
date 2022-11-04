@@ -3,7 +3,7 @@
     "Youtube Stream Record": {
       "commandName": "Project",
       "commandLineArgs": "once d6NI4FdRns4 -o \".\" -u \".\" -s",
-      "workingDirectory": ".\\bin\\Debug\\net5.0",
+      "workingDirectory": ".\\bin\\Debug\\net6.0",
       "sqlDebugging": false,
       "remoteDebugEnabled": false,
       "authenticationMode": "None",
@@ -15,7 +15,7 @@
       "commandLineArgs": "sub -o \".\" -u \".\"",
       "environmentVariables": {
         "RedisOption": "192.168.44.128,password=1qaz2wsx3edc,syncTimeout=3000",
-        "GoogleApiKey": "AIzaSyDSoca8DJWgVZsbSDT1EKhRdaJLVtw2-WY"
+        "GoogleApiKey": "123"
       }
     }
   }

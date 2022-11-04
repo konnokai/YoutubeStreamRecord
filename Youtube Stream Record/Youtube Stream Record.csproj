@@ -2,24 +2,22 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net5.0</TargetFramework>
     <RootNamespace>Youtube_Stream_Record</RootNamespace>
     <Authors>孤之界</Authors>
     <Product>Youtube Stream Record</Product>
     <AssemblyVersion>1.0.3.0</AssemblyVersion>
     <FileVersion>1.0.3.0</FileVersion>
     <Version>1.0.3</Version>
-    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommandLineParser" Version="2.8.0" />
-    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.49.0.2084" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.11.42" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
-    <PackageReference Include="StackExchange.Redis" Version="2.1.58" />
-    <PackageReference Include="System.Management" Version="5.0.0" />
+    <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="Google.Apis.YouTube.v3" Version="1.57.0.2827" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="StackExchange.Redis" Version="2.6.70" />
+    <PackageReference Include="System.Management" Version="6.0.0" />
   </ItemGroup>
 
 </Project>
