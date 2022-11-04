@@ -2,8 +2,12 @@
   "profiles": {
     "Youtube Stream Record": {
       "commandName": "Project",
-      "commandLineArgs": "once WmYncBBjGUQ -o \".\" -u \".\"",
-      "workingDirectory": ".\\bin\\Debug\\net5.0",
+      "commandLineArgs": "sub -o \".\" -u \".\"",
+      "workingDirectory": ".\\bin\\Debug\\net6.0",
+      "environmentVariables": {
+        "GoogleApiKey": "AIzaSyDSoca8DJWgVZsbSDT1EKhRdaJLVtw2-WY",
+        "RedisOption": "192.168.44.128,password=1qaz2wsx3edc,syncTimeout=3000"
+      },
       "sqlDebugging": false,
       "remoteDebugEnabled": false,
       "authenticationMode": "None",
@@ -11,7 +15,12 @@
       "nativeDebugging": false
     },
     "Docker": {
-      "commandName": "Docker"
+      "commandName": "Docker",
+      "commandLineArgs": "sub -o \".\" -u \".\"",
+      "environmentVariables": {
+        "RedisOption": "192.168.44.128,password=1qaz2wsx3edc,syncTimeout=3000",
+        "GoogleApiKey": "AIzaSyDSoca8DJWgVZsbSDT1EKhRdaJLVtw2-WY"
+      }
     }
   }
 }
