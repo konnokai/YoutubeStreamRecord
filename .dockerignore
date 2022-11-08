@@ -1,3 +1,18 @@
+# Rewrite from https://gitlab.com/Kwoth/nadekobot/-/blob/v4/.dockerignore
+# Ignore all files
+*
+
+# Don't ignore project folder
+!Youtube Stream Record/**
+
+# Not use
+!docker-entrypoint.sh
+
+# Ignore bin and obj folders in project
+Youtube Stream Record/bin/*
+Youtube Stream Record/obj/*
+
+# Default created
 **/.classpath
 **/.dockerignore
 **/.env

@@ -642,9 +642,6 @@ namespace Youtube_Stream_Record
             }
         }
 
-        public static DateTime ConvertToDateTime(this string str) =>
-              DateTime.Parse(str);
-
         public static string GetCommandLine(this Process process)
         {
             if (!OperatingSystem.IsWindows()) return "";
