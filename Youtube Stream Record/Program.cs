@@ -40,6 +40,11 @@ namespace Youtube_Stream_Record
                 e.Cancel = true;
             };
 
+            //https://blog.miniasp.com/post/2020/07/22/How-to-handle-graceful-shutdown-in-NET-Core
+            System.Runtime.Loader.AssemblyLoadContext.Default.Unloading += (ctx) => {
+                isClose = true;
+            };
+
             yt = new YouTubeService(new BaseClientService.Initializer
             {
                 ApplicationName = "Bot",

@@ -31,6 +31,4 @@ RUN set -xe; \
 ENV GoogleApiKey=[GoogleApiKey]
 ENV RedisOption="127.0.0.1,syncTimeout=3000"
 
-VOLUME [ "/output", "/temp_path", "/unarchived_stream" ]
-
-ENTRYPOINT ["dotnet", "Youtube Stream Record.dll sub -d -s -p /output -t /temp_path -u /unarchived_stream"]
+CMD dotnet "Youtube Stream Record.dll" sub -d -s -o /output -t /temp_path -u /unarchived_stream
