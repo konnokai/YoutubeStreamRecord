@@ -28,7 +28,6 @@ RUN set -xe; \
     apt-get autoremove -y; \
     apt-get autoclean -y
 
-ENV GoogleApiKey=[GoogleApiKey]
-ENV RedisOption="127.0.0.1,syncTimeout=3000"
+VOLUME [ "/output", "/temp_path", "/unarchived_stream" ]
 
 CMD dotnet "Youtube Stream Record.dll" sub -d -s -o /output -t /temp_path -u /unarchived_stream

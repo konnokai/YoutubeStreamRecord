@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  youtube-record-sub:
+    build: .
+    volumes:
+      - ${RecordPath:-./record}:/output
+      - ${TempPath:-./record}:/temp_path
+      - ${UnArchivedPath:-./unarchived}:/unarchived_stream
+    env_file:
+      - .env
