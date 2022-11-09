@@ -1,10 +1,13 @@
 ﻿using CommandLine;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -20,6 +23,8 @@ namespace Youtube_Stream_Record
 {
     static class Program
     {
+        public static bool InDocker { get { return Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true"; } }
+
         const string HTML = "liveStreamabilityRenderer\":{\"videoId\":\"";
 
         static YouTubeService yt;
@@ -308,9 +313,10 @@ namespace Youtube_Stream_Record
                         CancellationToken token = cancellationToken.Token;
 
                         string arguments = "--live-from-start -f bestvideo+bestaudio";
-                        if (isDisableLiveFromStart)
+                        if (isDisableLiveFromStart) // 如果關閉從開頭錄影的話，每六小時需要重新開一次錄影，才能避免掉長時間錄影導致HTTP 503錯誤
                         {
                             arguments = "-f b";
+                            #region 每六小時重新執行錄影
                             int waitTime = (5 * 60 * 60) + (59 * 60);
                             var task = Task.Run(() =>
                             {
@@ -324,6 +330,7 @@ namespace Youtube_Stream_Record
 
                                 if (!isDisableRedis) redis.GetSubscriber().Publish("youtube.record", videoId);
                             });
+                            #endregion
                         }
 
                         Log.Info($"存檔名稱: {fileName}");
@@ -337,7 +344,7 @@ namespace Youtube_Stream_Record
 #endif
 
                         // --live-from-start 太吃硬碟隨機讀寫
-                        // --embed-metadata --embed-thumbnail
+                        // --embed-metadata --embed-thumbnail 會導致不定時卡住，先移除
                         process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser {browser} --mark-watched {arguments}";
 
                         Log.Info(process.StartInfo.Arguments);
@@ -349,11 +356,8 @@ namespace Youtube_Stream_Record
                         Log.Info($"錄影結束");
                         cancellationToken.Cancel();
 
-#region 確定直播是否結束
-                        if (IsLiveEnd(videoId, isDisableRedis)) break;
-
-                        //Log.Warn($"直播尚未結束，重新錄影");
-                        #endregion
+                        // 確定直播是否結束
+                        if (IsLiveEnd(videoId, isDisableRedis)) break;                       
                     } while (!isClose);
                     #endregion
                 } while (isLoop && !isClose);
@@ -544,14 +548,59 @@ namespace Youtube_Stream_Record
             if (!unarchivedOutputPath.EndsWith(GetEnvSlash())) unarchivedOutputPath += GetEnvSlash();
             var sub = redis.GetSubscriber();
 
+            DockerClient dockerClient = null;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && InDocker)
+            {
+                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+                dockerClient = new DockerClientConfiguration(new Uri("unix:///var/run/docker.sock")).CreateClient();
+                await dockerClient.System.PingAsync();
+                Log.Info("成功連線到docker.sock!");
+            }
+
             sub.Subscribe("youtube.record", async (redisChannel, videoId) =>
             {
                 Log.Info($"已接收錄影請求: {videoId}");
                 var channelData = await GetChannelDataByVideoIdAsync(videoId);
+                videoId = videoId.ToString().Replace("-", "@");
                 Log.Info(channelData.ChannelId + " / " + channelData.ChannelTitle);
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once {videoId.ToString().Replace("-","@")} -o \"{outputPath}\" -t \"{tempPath}\" -u \"{unarchivedOutputPath}\"" + 
-                    (isDisableLiveFromStart ? " --disable-live-from-start" : ""));
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    if (InDocker && dockerClient != null)
+                    {
+                        var parms = new CreateContainerParameters();
+                        parms.Image = "youtube-record";
+                        parms.Name = $"youtube-record-{channelData.ChannelId}-{videoId.ToString().Replace("@", "-")}";
+
+                        parms.Env = new List<string>();
+                        parms.Env.Add($"GoogleApiKey=\"{GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}\"");
+                        parms.Env.Add($"RedisOption=\"{GetEnvironmentVariable("RedisOption", typeof(string), true)}\"");
+
+                        // Vol目前掛載失敗
+                        parms.Volumes = new Dictionary<string, EmptyStruct>();
+                        parms.Volumes.Add($"\"{GetEnvironmentVariable("RecordPath", typeof(string), true)}\"", "/output" );
+                        parms.Volumes.Add($"\"{GetEnvironmentVariable("TempPath", typeof(string), true)}\":/temp_path", new EmptyStruct());
+                        parms.Volumes.Add($"\"{GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}\":/unarchived", new EmptyStruct());
+                
+                        parms.Cmd = new List<string>();
+                        parms.Cmd.Add("dotnet"); parms.Cmd.Add("\"/app/Youtube Stream Record.dll\""); parms.Cmd.Add("once"); parms.Cmd.Add(videoId.ToString());
+                        parms.Cmd.Add("-o"); parms.Cmd.Add("/output");
+                        parms.Cmd.Add("-t"); parms.Cmd.Add("/temp_path");
+                        parms.Cmd.Add("-u"); parms.Cmd.Add("/unarchived");
+
+                        var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms);
+                        Log.Info($"已建立容器: {containerResponse.ID}");
+                    }
+                    else
+                    {
+                        Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once " +
+                            $"{videoId} " +
+                            $"-o \"{outputPath}\" " +
+                            $"-t \"{tempPath}\" " +
+                            $"-u \"{unarchivedOutputPath}\"" +
+                            (isDisableLiveFromStart ? " --disable-live-from-start" : ""));
+                    }
+                }
                 else Process.Start(new ProcessStartInfo()
                 {
                     FileName = "dotnet",
@@ -747,6 +796,23 @@ namespace Youtube_Stream_Record
             }
         }
 
+        public static object GetEnvironmentVariable(string varName, Type T, bool exitIfNoVar = false)
+        {
+            string value = Environment.GetEnvironmentVariable(varName);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                if (exitIfNoVar)
+                {
+                    Log.Error($"{varName}遺失，請輸入至環境變數後重新運行");
+                    if (!Console.IsInputRedirected)
+                        Console.ReadKey();
+                    Environment.Exit(3);
+                }
+                return default;
+            }
+            return Convert.ChangeType(value, T);
+        }
+
         public class RequiredOptions
         {
             [Option('o', "output", Required = true, HelpText = "輸出路徑")]
@@ -786,7 +852,7 @@ namespace Youtube_Stream_Record
         [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
         public class SubOptions : RequiredOptions
         {
-            [Option('d', "audo-delete", Required = false, HelpText = "刪檔直播輸出路徑", Default = false)]
+            [Option('d', "audo-delete", Required = false, HelpText = "自動刪除超過14天的存檔", Default = false)]
             public bool AutoDeleteArchived { get; set; }
         }
     }

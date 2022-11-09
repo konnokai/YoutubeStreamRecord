@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="Docker.DotNet" Version="3.125.12" />
     <PackageReference Include="Google.Apis.YouTube.v3" Version="1.57.0.2827" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.0" />
