@@ -599,7 +599,7 @@ namespace Youtube_Stream_Record
                     if (InDocker && dockerClient != null)
                     {
                         var parms = new CreateContainerParameters();
-                        parms.Image = "youtube-record";
+                        parms.Image = "youtube-record:latest";
                         parms.Name = $"youtube-record-{channelData.ChannelId}-{videoId.ToString().Replace("@", "-")}";
 
                         parms.Env = new List<string>();
@@ -618,7 +618,7 @@ namespace Youtube_Stream_Record
 
                         parms.AttachStdout = false;
                         parms.AttachStdin = false;
-
+                                                
                         var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms, CancellationToken.None);
                         Log.Info($"已建立容器: {containerResponse.ID}");
                         ContainerStartParameters containerStartParameters = new ContainerStartParameters();
