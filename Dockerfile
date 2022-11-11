@@ -28,4 +28,6 @@ RUN set -xe; \
     apt-get autoremove -y; \
     apt-get autoclean -y
 
+ENV TZ="Asia/Taipei"
+
 CMD dotnet "Youtube Stream Record.dll" sub -d -s -o /output -t /temp_path -u /unarchived_stream
