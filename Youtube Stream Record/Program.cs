@@ -600,7 +600,7 @@ namespace Youtube_Stream_Record
                     {
                         var parms = new CreateContainerParameters();
                         parms.Image = "youtube-record:latest";
-                        parms.Name = $"youtube-record-{channelData.ChannelId}-{videoId.ToString().Replace("@", "-")}";
+                        parms.Name = $"youtube-record-{videoId.ToString().Replace("@", "-")}";
 
                         parms.Env = new List<string>();
                         parms.Env.Add($"GoogleApiKey={GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}");
@@ -613,11 +613,18 @@ namespace Youtube_Stream_Record
                         binds.Add($"{GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt");
                         parms.HostConfig = new HostConfig() { Binds = binds };
 
+                        parms.Labels = new Dictionary<string, string>();
+                        parms.Labels.Add("Youtube Channel Id", channelData.ChannelId);
+                        parms.Labels.Add("Youtube Channel Title", channelData.ChannelTitle);
+                        parms.Labels.Add("Youtube Video Id", videoId.ToString().Replace("@", "-"));
+
                         parms.Cmd = new List<string>();
                         parms.Cmd.Add("/bin/sh"); parms.Cmd.Add("-c"); parms.Cmd.Add(procArgs);
 
                         parms.AttachStdout = false;
                         parms.AttachStdin = false;
+
+                        parms.Tty = true;
                                                 
                         var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms, CancellationToken.None);
                         Log.Info($"已建立容器: {containerResponse.ID}");
