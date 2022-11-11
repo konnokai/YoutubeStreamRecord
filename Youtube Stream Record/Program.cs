@@ -73,6 +73,9 @@ namespace Youtube_Stream_Record
                 Console.WriteLine($"({result}) Press any key to exit...");
                 Console.ReadKey();
             }
+#else
+            if (InDocker && result == ResultType.Error)
+                Environment.Exit(3);
 #endif
         }
 
@@ -312,10 +315,10 @@ namespace Youtube_Stream_Record
                         CancellationTokenSource cancellationToken = new CancellationTokenSource();
                         CancellationToken token = cancellationToken.Token;
 
-                        string arguments = "--live-from-start -f bestvideo+bestaudio";
+                        string arguments = "--live-from-start -f bestvideo+bestaudio ";
                         if (isDisableLiveFromStart) // 如果關閉從開頭錄影的話，每六小時需要重新開一次錄影，才能避免掉長時間錄影導致HTTP 503錯誤
                         {
-                            arguments = "-f b";
+                            arguments = "-f b ";
                             #region 每六小時重新執行錄影
                             int waitTime = (5 * 60 * 60) + (59 * 60);
                             var task = Task.Run(() =>
@@ -343,9 +346,14 @@ namespace Youtube_Stream_Record
                         string browser = "chrome";
 #endif
 
+                        if (InDocker)
+                            arguments += "--cookies /app/cookies.txt";
+                        else
+                            arguments += $"--cookies-from-browser {browser}";
+
                         // --live-from-start 太吃硬碟隨機讀寫
                         // --embed-metadata --embed-thumbnail 會導致不定時卡住，先移除
-                        process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --cookies-from-browser {browser} --mark-watched {arguments}";
+                        process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --mark-watched {arguments}";
 
                         Log.Info(process.StartInfo.Arguments);
                         
@@ -540,7 +548,7 @@ namespace Youtube_Stream_Record
             catch (Exception ex)
             {
                 Log.Error("Redis連線錯誤，請確認伺服器是否已開啟");
-                Log.Error(ex.Message);
+                Log.Error(ex.ToString());
                 return ResultType.Error;
             }
 
@@ -551,10 +559,18 @@ namespace Youtube_Stream_Record
             DockerClient dockerClient = null;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && InDocker)
             {
-                CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-                dockerClient = new DockerClientConfiguration(new Uri("unix:///var/run/docker.sock")).CreateClient();
-                await dockerClient.System.PingAsync();
-                Log.Info("成功連線到docker.sock!");
+                try
+                {
+                    dockerClient = new DockerClientConfiguration(new Uri("unix:///var/run/docker.sock")).CreateClient();
+                    await dockerClient.System.PingAsync();
+                    Log.Info("成功連線到docker.sock!");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("在Docker環境但無法連接到docker.sock，請確認Volume綁定是否正確");
+                    Log.Error(ex.ToString());
+                    return ResultType.Error;
+                }
             }
 
             sub.Subscribe("youtube.record", async (redisChannel, videoId) =>
@@ -564,8 +580,22 @@ namespace Youtube_Stream_Record
                 videoId = videoId.ToString().Replace("-", "@");
                 Log.Info(channelData.ChannelId + " / " + channelData.ChannelTitle);
 
+                string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
+                    $"once {videoId} " +
+                    $"-o \"{outputPath}\" " +
+                    $"-t \"{tempPath}\" " +
+                    $"-u \"{unarchivedOutputPath}\"" +
+                    (isDisableLiveFromStart ? " --disable-live-from-start" : "");
+
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
+                    if (InDocker) // 在Docker環境內的話則直接指定預設路徑
+                    {
+                        outputPath = "/output";
+                        tempPath = "/temp_path";
+                        unarchivedOutputPath = "/unarchived";
+                    }
+
                     if (InDocker && dockerClient != null)
                     {
                         var parms = new CreateContainerParameters();
@@ -573,38 +603,46 @@ namespace Youtube_Stream_Record
                         parms.Name = $"youtube-record-{channelData.ChannelId}-{videoId.ToString().Replace("@", "-")}";
 
                         parms.Env = new List<string>();
-                        parms.Env.Add($"GoogleApiKey=\"{GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}\"");
-                        parms.Env.Add($"RedisOption=\"{GetEnvironmentVariable("RedisOption", typeof(string), true)}\"");
+                        parms.Env.Add($"GoogleApiKey={GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}");
+                        parms.Env.Add($"RedisOption={GetEnvironmentVariable("RedisOption", typeof(string), true)}");
 
-                        // Vol目前掛載失敗
-                        parms.Volumes = new Dictionary<string, EmptyStruct>();
-                        parms.Volumes.Add($"\"{GetEnvironmentVariable("RecordPath", typeof(string), true)}\"", "/output" );
-                        parms.Volumes.Add($"\"{GetEnvironmentVariable("TempPath", typeof(string), true)}\":/temp_path", new EmptyStruct());
-                        parms.Volumes.Add($"\"{GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}\":/unarchived", new EmptyStruct());
-                
+                        List<string> binds = new List<string>();
+                        binds.Add($"{GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output");
+                        binds.Add($"{GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path");
+                        binds.Add($"{GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}:/unarchived");
+                        binds.Add($"{GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt");
+                        parms.HostConfig = new HostConfig() { Binds = binds };
+
                         parms.Cmd = new List<string>();
-                        parms.Cmd.Add("dotnet"); parms.Cmd.Add("\"/app/Youtube Stream Record.dll\""); parms.Cmd.Add("once"); parms.Cmd.Add(videoId.ToString());
-                        parms.Cmd.Add("-o"); parms.Cmd.Add("/output");
-                        parms.Cmd.Add("-t"); parms.Cmd.Add("/temp_path");
-                        parms.Cmd.Add("-u"); parms.Cmd.Add("/unarchived");
+                        parms.Cmd.Add("/bin/sh"); parms.Cmd.Add("-c"); parms.Cmd.Add(procArgs);
 
-                        var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms);
+                        parms.AttachStdout = false;
+                        parms.AttachStdin = false;
+
+                        var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms, CancellationToken.None);
                         Log.Info($"已建立容器: {containerResponse.ID}");
+                        ContainerStartParameters containerStartParameters = new ContainerStartParameters();
+
+                        if (containerResponse.Warnings.Any())
+                            Log.Warn($"容器警告: {string.Join('\n', containerResponse.Warnings)}");
+                        else if (await dockerClient.Containers.StartContainerAsync(containerResponse.ID, new ContainerStartParameters(), CancellationToken.None))
+                            Log.Info($"容器啟動成功: {containerResponse.ID}");
+                        else
+                            Log.Warn($"容器已建立但無法啟動: {containerResponse.ID}");
+                    }
+                    else if (!InDocker)
+                    {
+                        Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" {procArgs}");
                     }
                     else
                     {
-                        Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" dotnet \"Youtube Stream Record.dll\" once " +
-                            $"{videoId} " +
-                            $"-o \"{outputPath}\" " +
-                            $"-t \"{tempPath}\" " +
-                            $"-u \"{unarchivedOutputPath}\"" +
-                            (isDisableLiveFromStart ? " --disable-live-from-start" : ""));
+                        Log.Error("在Docker環境內但無法建立新的容器來錄影，請確認環境是否正常");
                     }
                 }
                 else Process.Start(new ProcessStartInfo()
                 {
                     FileName = "dotnet",
-                    Arguments = $"\"Youtube Stream Record.dll\" once {videoId.ToString().Replace("-", "@")} -o \"{outputPath}\\\" -t \"{tempPath}\\\" -u \"{unarchivedOutputPath}\\\"" + (isDisableLiveFromStart ? " --disable-live-from-start" : ""),
+                    Arguments = procArgs.Replace("dotnet ", ""),
                     CreateNoWindow = false,
                     UseShellExecute = true
                 });

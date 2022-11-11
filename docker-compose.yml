@@ -4,9 +4,10 @@ services:
     build: .
     image: youtube-record
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ${RecordPath:-./record}:/output
       - ${TempPath:-./record}:/temp_path
       - ${UnArchivedPath:-./unarchived}:/unarchived_stream
-      - /var/run/docker.sock:/var/run/docker.sock
+      - ${CookiesFilePath:-./cookies.txt}:/app/cookies.txt
     env_file:
       - .env
