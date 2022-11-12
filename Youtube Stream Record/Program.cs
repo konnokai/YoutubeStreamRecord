@@ -520,7 +520,7 @@ namespace Youtube_Stream_Record
             return false;
         }
 
-        static Timer autoDeleteArchivedTimer;
+        static Timer autoDeleteArchivedTimer, autoDeleteTempRecordTimer;
         private static async Task<ResultType> SubRecord(string outputPath, string tempPath, string unarchivedOutputPath, bool autoDeleteArchived, bool isDisableLiveFromStart = false)
         {
             try
@@ -569,26 +569,43 @@ namespace Youtube_Stream_Record
             Log.Info($"訂閱模式，保存路徑: {outputPath}");
             Log.Info($"刪檔直播保存路徑: {unarchivedOutputPath}");
             Log.Info("已訂閱Redis頻道");
+
+            Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");
+
+            if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath))
+            {
+                autoDeleteTempRecordTimer = new Timer((obj) =>
+                {
+                    try
+                    {
+                        var list = Directory.GetDirectories(tempPath, "202?????", SearchOption.TopDirectoryOnly);
+                        foreach (var item in list)
+                        {
+                            var regexResult = regex.Match(item);
+                            if (!regexResult.Success) continue;
+
+                            if (DateTime.Now.Subtract(Convert.ToDateTime($"{regexResult.Groups[1]}/{regexResult.Groups[2]}/{regexResult.Groups[3]}")) > TimeSpan.FromDays(2))
+                            {
+                                Directory.Delete(item, true);
+                                Log.Info($"已刪除: {item}");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex.ToString());
+                    }
+                }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
+                Log.Warn("已開啟自動刪除3天後的暫存存檔");
+            }
+
             if (autoDeleteArchived)
             {
                 autoDeleteArchivedTimer = new Timer((obj) => 
                 {
                     try
                     {
-                        Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");
                         var list = Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly);
-                        foreach (var item in list)
-                        {
-                            var regexResult = regex.Match(item);
-                            if (!regexResult.Success) continue;
-
-                            if (DateTime.Now.Subtract(Convert.ToDateTime($"{regexResult.Groups[1]}/{regexResult.Groups[2]}/{regexResult.Groups[3]}")) > TimeSpan.FromDays(14))
-                            {
-                                Directory.Delete(item, true);
-                                Log.Info($"已刪除: {item}");
-                            }
-                        }
-                        list = Directory.GetDirectories(tempPath, "202?????", SearchOption.TopDirectoryOnly);
                         foreach (var item in list)
                         {
                             var regexResult = regex.Match(item);
