@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <RootNamespace>Youtube_Stream_Record</RootNamespace>
     <Authors>孤之界</Authors>
     <Product>Youtube Stream Record</Product>
@@ -13,8 +13,10 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="Docker.DotNet" Version="3.125.12" />
     <PackageReference Include="Google.Apis.YouTube.v3" Version="1.57.0.2827" />
     <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.6.70" />
     <PackageReference Include="System.Management" Version="6.0.0" />
