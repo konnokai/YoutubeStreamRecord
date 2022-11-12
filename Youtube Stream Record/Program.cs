@@ -695,7 +695,7 @@ namespace Youtube_Stream_Record
                         Log.Error(ex.ToString());
                     }
                 }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
-                Log.Warn("已開啟自動刪除3天後的暫存存檔");
+                Log.Warn("已開啟自動刪除2天後的暫存存檔");
             }
 
             if (autoDeleteArchived)
