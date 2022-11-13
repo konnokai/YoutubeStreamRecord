@@ -597,10 +597,10 @@ namespace Youtube_Stream_Record
                     }
 
                     if (InDocker && dockerClient != null)
-                    {
+                    {                        
                         var parms = new CreateContainerParameters();
                         parms.Image = "youtube-record:latest";
-                        parms.Name = $"youtube-record-{videoId.ToString().Replace("@", "-")}";
+                        parms.Name = $"record-{videoId.ToString().Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss)}";
 
                         parms.Env = new List<string>();
                         parms.Env.Add($"GoogleApiKey={GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}");
@@ -625,17 +625,28 @@ namespace Youtube_Stream_Record
                         parms.AttachStdin = false;
 
                         parms.Tty = true;
-                                                
-                        var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms, CancellationToken.None);
-                        Log.Info($"已建立容器: {containerResponse.ID}");
-                        ContainerStartParameters containerStartParameters = new ContainerStartParameters();
 
-                        if (containerResponse.Warnings.Any())
-                            Log.Warn($"容器警告: {string.Join('\n', containerResponse.Warnings)}");
-                        else if (await dockerClient.Containers.StartContainerAsync(containerResponse.ID, new ContainerStartParameters(), CancellationToken.None))
-                            Log.Info($"容器啟動成功: {containerResponse.ID}");
-                        else
-                            Log.Warn($"容器已建立但無法啟動: {containerResponse.ID}");
+                        try
+                        {
+                            var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms, CancellationToken.None);
+                            Log.Info($"已建立容器: {containerResponse.ID}");
+                            ContainerStartParameters containerStartParameters = new ContainerStartParameters();
+
+                            if (containerResponse.Warnings.Any())
+                                Log.Warn($"容器警告: {string.Join('\n', containerResponse.Warnings)}");
+                            else if (await dockerClient.Containers.StartContainerAsync(containerResponse.ID, new ContainerStartParameters(), CancellationToken.None))
+                                Log.Info($"容器啟動成功: {containerResponse.ID}");
+                            else
+                                Log.Warn($"容器已建立但無法啟動: {containerResponse.ID}");
+                        }
+                        catch (DockerApiException dockerEx) when (dockerEx.Message.ToLower().Contains("already in use by container"))
+                        {
+                            Log.Warn($"已建立 {parms.Name} 的容器，略過建立");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error($"建立容器 {parms.Name} 錯誤: {ex}");
+                        }
                     }
                     else if (!InDocker)
                     {
