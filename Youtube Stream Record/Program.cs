@@ -600,7 +600,7 @@ namespace Youtube_Stream_Record
                     {                        
                         var parms = new CreateContainerParameters();
                         parms.Image = "youtube-record:latest";
-                        parms.Name = $"record-{videoId.ToString().Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss)}";
+                        parms.Name = $"record-{videoId.ToString().Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss}";
 
                         parms.Env = new List<string>();
                         parms.Env.Add($"GoogleApiKey={GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}");
