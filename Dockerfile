@@ -18,13 +18,26 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+# https://ffbinaries.com/downloads
+ENV FFMPEG_VER="4.4.1"
+
 RUN set -xe; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ffmpeg python3 python3-pip ; \
-    update-alternatives --install /usr/bin/python python /usr/bin/python3.9 1; \
-    pip3 install --no-cache-dir --upgrade yt-dlp; \
-    apt-get purge -y python3-pip; \
-    chmod +x /usr/local/bin/yt-dlp; \
+    apt-get install -y --no-install-recommends wget unzip; \
+    wget https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux; \
+    wget https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v$FFMPEG_VER/ffmpeg-$FFMPEG_VER-linux-64.zip; \
+	wget https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v$FFMPEG_VER/ffprobe-$FFMPEG_VER-linux-64.zip; \
+    unzip ffmpeg-$FFMPEG_VER-linux-64.zip; \
+    unzip ffprobe-$FFMPEG_VER-linux-64.zip; \
+    rm ffmpeg-$FFMPEG_VER-linux-64.zip; \
+    rm ffprobe-$FFMPEG_VER-linux-64.zip; \
+    chmod +x yt-dlp_linux; \
+    chmod +x ffmpeg; \
+    chmod +x ffprobe; \
+    mv yt-dlp_linux /usr/local/bin/yt-dlp; \
+    mv ffmpeg /usr/local/bin/ffmpeg; \
+    mv ffprobe /usr/local/bin/ffprobe; \
+    apt-get purge -y wget unzip; \
     apt-get autoremove -y; \
     apt-get autoclean -y
 
