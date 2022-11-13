@@ -561,12 +561,11 @@ namespace Youtube_Stream_Record
             {
                 // https://stackoverflow.com/a/1395226
                 // get the file attributes for file or directory
-                string cookiesPath = GetEnvironmentVariable("CookiesFilePath", typeof(string), true).ToString();
-                FileAttributes attr = File.GetAttributes(cookiesPath);
+                FileAttributes attr = File.GetAttributes(@"/app/cookies.txt");
 
                 if (attr.HasFlag(FileAttributes.Directory))
                 {
-                    Log.Error($"Cookies路徑為資料夾，請確認路徑設定是否正確，已設定的路徑為: {cookiesPath}");
+                    Log.Error($"Cookies路徑為資料夾，請確認路徑設定是否正確，已設定的路徑為: {GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}");
                     return ResultType.Error;
                 }
 
