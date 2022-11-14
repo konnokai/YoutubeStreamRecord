@@ -60,7 +60,7 @@ namespace Youtube_Stream_Record
                 Console.ReadKey();
             }
 #else
-            if (InDocker && result == ResultType.Error)
+            if (Utility.InDocker && result == ResultType.Error)
                 Environment.Exit(3);
 #endif
         }
