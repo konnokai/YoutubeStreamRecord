@@ -298,7 +298,7 @@ namespace Youtube_Stream_Record
                 {
                     Log.Info($"移動 \"{item}\" 至 \"{outputPath}{Path.GetFileName(item)}\"");
                     File.Move(item, $"{outputPath}{Path.GetFileName(item)}");
-                    if (!isDisableRedis) Utility.Redis.GetSubscriber().Publish(redisChannel, videoId);
+                    if (!isDisableRedis && !string.IsNullOrEmpty(redisChannel)) Utility.Redis.GetSubscriber().Publish(redisChannel, videoId);
                 }
                 catch (Exception ex)
                 {
