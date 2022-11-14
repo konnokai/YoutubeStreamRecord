@@ -10,7 +10,7 @@ public class BotConfig
 
     public void InitBotConfig()
     {
-        if (Program.InDocker)
+        if (Utility.InDocker)
         {
             Log.Info("從環境變數讀取設定");
 
@@ -20,7 +20,7 @@ public class BotConfig
                 object origValue = item.GetValue(this);
                 if (origValue == default) exitIfNoVar = true;
 
-                object setValue = Program.GetEnvironmentVariable(item.Name, item.PropertyType, exitIfNoVar);
+                object setValue = Utility.GetEnvironmentVariable(item.Name, item.PropertyType, exitIfNoVar);
                 if (setValue == null) setValue = origValue;
 
                 item.SetValue(this, setValue);
