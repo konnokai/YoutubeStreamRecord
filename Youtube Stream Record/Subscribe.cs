@@ -166,6 +166,11 @@ namespace Youtube_Stream_Record
                 Log.Warn($"已刪檔直播: {videoId}");
             });
 
+            sub.Subscribe("youtube.memberonly", (channel, videoId) =>
+            {
+                Log.Warn($"已轉會限直播: {videoId}");
+            });
+
             Log.Info($"訂閱模式，保存路徑: {outputPath}");
             Log.Info($"刪檔直播保存路徑: {unarchivedOutputPath}");
             Log.Info("已訂閱Redis頻道");

@@ -1,7 +1,6 @@
 ﻿using Google.Apis.YouTube.v3;
 using Google.Apis.YouTube.v3.Data;
 using HtmlAgilityPack;
-using Newtonsoft.Json;
 using StackExchange.Redis;
 using System;
 using System.Diagnostics;
@@ -161,6 +160,7 @@ namespace Youtube_Stream_Record
             }
             return Convert.ChangeType(value, T);
         }
+
         public static bool IsLiveEnd(string videoId, bool isDisableRedis)
         {
             var video = YouTube.Videos.List("snippet");
@@ -177,9 +177,7 @@ namespace Youtube_Stream_Record
                     return true;
                 }
                 if (videoResult2.Items[0].Snippet.LiveBroadcastContent == "none")
-                {
-                    if (!isDisableRedis)
-                        Redis.GetSubscriber().Publish("youtube.endstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = $"youtube_{videoResult2.Items[0].Snippet.ChannelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}" }));
+                {                    
                     return true;
                 }
             }
@@ -199,7 +197,7 @@ namespace Youtube_Stream_Record
             }
             catch (Exception ex) when (ex.Message.Contains("403") || ex.Message.ToLower().Contains("the request might not be properly authorized"))
             {
-                Log.Warn($"已變更為會限影片: {videoId}");
+                Log.Warn($"此為會限影片: {videoId}");
                 return true;
             }
             catch (Exception ex)

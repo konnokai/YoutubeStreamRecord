@@ -279,7 +279,7 @@ namespace Youtube_Stream_Record
                     else if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath)) // 否則就保存到outputPath
                     {
                         Log.Info("將直播轉移至保存點");
-                        MoveVideo(outputPath);
+                        MoveVideo(outputPath, "youtube.endstream");
                     }
                     #endregion
 
