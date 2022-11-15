@@ -46,7 +46,7 @@ namespace Youtube_Stream_Record
             {
                 videoId = id;
 
-                var result = await Utility.GetChannelDataByVideoIdAsync(videoId);
+                var result = await Utility.GetSnippetDataByVideoIdAsync(videoId);
                 channelId = result.ChannelId;
                 channelTitle = result.ChannelTitle;
 

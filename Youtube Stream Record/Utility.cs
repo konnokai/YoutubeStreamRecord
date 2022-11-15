@@ -1,4 +1,5 @@
 ﻿using Google.Apis.YouTube.v3;
+using Google.Apis.YouTube.v3.Data;
 using HtmlAgilityPack;
 using Newtonsoft.Json;
 using StackExchange.Redis;
@@ -110,19 +111,19 @@ namespace Youtube_Stream_Record
             }
         }
 
-        public static async Task<(string ChannelId, string ChannelTitle)> GetChannelDataByVideoIdAsync(string videoId)
+        public static async Task<VideoSnippet> GetSnippetDataByVideoIdAsync(string videoId)
         {
             try
             {
                 var video = YouTube.Videos.List("snippet");
                 video.Id = videoId;
                 var response = await video.ExecuteAsync().ConfigureAwait(false);
-                return (response.Items[0].Snippet.ChannelId, response.Items[0].Snippet.ChannelTitle);
+                return response.Items[0].Snippet;
             }
             catch (Exception ex)
             {
                 Log.Error(ex.Message + "\r\n" + ex.StackTrace);
-                return ("", "");
+                return null;
             }
         }
 

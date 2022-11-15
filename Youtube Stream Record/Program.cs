@@ -31,7 +31,8 @@ namespace Youtube_Stream_Record
                 e.Cancel = true;
             };
 
-            //https://blog.miniasp.com/post/2020/07/22/How-to-handle-graceful-shutdown-in-NET-Core
+            // https://blog.miniasp.com/post/2020/07/22/How-to-handle-graceful-shutdown-in-NET-Core
+            // Todo: docker compose down捕捉不到這事件，待處理
             System.Runtime.Loader.AssemblyLoadContext.Default.Unloading += (ctx) => {
                 Utility.IsClose = true;
             };

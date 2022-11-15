@@ -64,9 +64,9 @@ namespace Youtube_Stream_Record
             sub.Subscribe("youtube.record", async (redisChannel, videoId) =>
             {
                 Log.Info($"已接收錄影請求: {videoId}");
-                var channelData = await Utility.GetChannelDataByVideoIdAsync(videoId);
+                var snippetData = await Utility.GetSnippetDataByVideoIdAsync(videoId);
                 videoId = videoId.ToString().Replace("-", "@");
-                Log.Info(channelData.ChannelId + " / " + channelData.ChannelTitle);
+                Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
 
                 string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
                     $"once {videoId} " +
@@ -100,16 +100,20 @@ namespace Youtube_Stream_Record
                         parms.HostConfig = new HostConfig() { Binds = binds };
 
                         parms.Labels = new Dictionary<string, string>();
-                        parms.Labels.Add("Youtube Channel Id", channelData.ChannelId);
-                        parms.Labels.Add("Youtube Channel Title", channelData.ChannelTitle);
-                        parms.Labels.Add("Youtube Video Id", videoId.ToString().Replace("@", "-"));
+                        parms.Labels.Add("me.konnokai.record.video.title", snippetData.Title);
+                        parms.Labels.Add("me.konnokai.record.video.id", videoId.ToString().Replace("@", "-"));
+                        parms.Labels.Add("me.konnokai.record.channel.title", snippetData.ChannelTitle);
+                        parms.Labels.Add("me.konnokai.record.channel.id", snippetData.ChannelId);
 
                         parms.Cmd = new List<string>();
                         parms.Cmd.Add("/bin/sh"); parms.Cmd.Add("-c"); parms.Cmd.Add(procArgs);
 
+                        // 不要讓程式自己Attach以免Log混亂
                         parms.AttachStdout = false;
                         parms.AttachStdin = false;
 
+                        // 允許另外透過其他方法Attach進去交互
+                        parms.OpenStdin = true;
                         parms.Tty = true;
 
                         try
@@ -136,7 +140,7 @@ namespace Youtube_Stream_Record
                     }
                     else if (!Utility.InDocker)
                     {
-                        Process.Start("tmux", $"new-window -d -n \"{channelData.ChannelTitle}\" {procArgs}");
+                        Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
                     }
                     else
                     {
