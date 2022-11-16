@@ -117,6 +117,9 @@ namespace Youtube_Stream_Record
                 var video = YouTube.Videos.List("snippet");
                 video.Id = videoId;
                 var response = await video.ExecuteAsync().ConfigureAwait(false);
+                if (!response.Items.Any())
+                    return null;
+
                 return response.Items[0].Snippet;
             }
             catch (Exception ex)

@@ -283,7 +283,8 @@ namespace Youtube_Stream_Record
                     }
                     #endregion
 
-                    if (!isDisableRedis) await Utility.Redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
+                    if (!isDisableRedis) 
+                        await Utility.Redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
                 } while (isLoop && !Utility.IsClose);
             }
 
@@ -298,7 +299,8 @@ namespace Youtube_Stream_Record
                 {
                     Log.Info($"移動 \"{item}\" 至 \"{outputPath}{Path.GetFileName(item)}\"");
                     File.Move(item, $"{outputPath}{Path.GetFileName(item)}");
-                    if (!isDisableRedis && !string.IsNullOrEmpty(redisChannel)) Utility.Redis.GetSubscriber().Publish(redisChannel, videoId);
+                    if (!isDisableRedis && !string.IsNullOrEmpty(redisChannel))
+                        Utility.Redis.GetSubscriber().Publish(redisChannel, videoId);
                 }
                 catch (Exception ex)
                 {

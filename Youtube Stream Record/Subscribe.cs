@@ -65,6 +65,12 @@ namespace Youtube_Stream_Record
             {
                 Log.Info($"已接收錄影請求: {videoId}");
                 var snippetData = await Utility.GetSnippetDataByVideoIdAsync(videoId);
+                if (snippetData == null)
+                {
+                    Log.Warn($"{videoId} 無直播資料，可能已被移除");
+                    return;
+                }
+
                 videoId = videoId.ToString().Replace("-", "@");
                 Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
 
