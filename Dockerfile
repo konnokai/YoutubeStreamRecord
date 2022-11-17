@@ -19,5 +19,4 @@ ENV TZ="Asia/Taipei"
 
 STOPSIGNAL SIGQUIT
 
-ENTRYPOINT []
-CMD dotnet "Youtube Stream Record.dll" sub -d -s -o /output -t /temp_path -u /unarchived_stream
+ENTRYPOINT ["dotnet", "Youtube Stream Record.dll", "sub", "-d", "-s", "-o", "/output", "-t", "/temp_path", "-u", "/unarchived_stream"]

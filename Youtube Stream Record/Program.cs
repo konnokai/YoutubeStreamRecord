@@ -17,21 +17,9 @@ namespace Youtube_Stream_Record
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.CancelKeyPress += (sender, e) =>
             {
+                Log.Info("Console.CancelKeyPress");
                 Utility.IsClose = true;
                 e.Cancel = true;
-            };
-
-            // https://blog.miniasp.com/post/2020/07/22/How-to-handle-graceful-shutdown-in-NET-Core
-            // Todo: docker compose down捕捉不到這事件，待處理
-            System.Runtime.Loader.AssemblyLoadContext.Default.Unloading += (ctx) => {
-                Utility.IsClose = true;
-            };
-
-            // https://blog.csdn.net/ahilll/article/details/82344402
-            // 不知道有沒有用就是
-            AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
-            {
-                Utility.IsClose = true;
             };
 
             Utility.YouTube = new YouTubeService(new BaseClientService.Initializer
@@ -51,7 +39,7 @@ namespace Youtube_Stream_Record
                 (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.AutoDeleteArchived,so.DisableLiveFromStart).Result,
                 Error => ResultType.None);
 
-#if DEBUG            
+#if DEBUG
             if (result == ResultType.Error || result == ResultType.None)
             {
                 Console.WriteLine($"({result}) Press any key to exit...");

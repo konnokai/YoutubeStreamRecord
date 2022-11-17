@@ -74,6 +74,14 @@ namespace Youtube_Stream_Record
                 videoId = videoId.ToString().Replace("-", "@");
                 Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
 
+                List<string> procList = new();
+                procList.Add("dotnet"); procList.Add("\"Youtube Stream Record.dll\"");
+                procList.Add("once"); procList.Add(videoId);
+                procList.Add("-o"); procList.Add($"\"{outputPath}\"");
+                procList.Add("-t"); procList.Add($"\"{tempPath}\"");
+                procList.Add("-u"); procList.Add($"\"{unarchivedOutputPath}\"");
+                procList.Add(isDisableLiveFromStart ? " --disable-live-from-start" : "");
+
                 string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
                     $"once {videoId} " +
                     $"-o \"{outputPath}\" " +
@@ -111,8 +119,10 @@ namespace Youtube_Stream_Record
                         parms.Labels.Add("me.konnokai.record.channel.title", snippetData.ChannelTitle);
                         parms.Labels.Add("me.konnokai.record.channel.id", snippetData.ChannelId);
 
-                        parms.Cmd = new List<string>();
-                        parms.Cmd.Add("/bin/sh"); parms.Cmd.Add("-c"); parms.Cmd.Add(procArgs);
+                        parms.Entrypoint = procList;
+
+                        //parms.Cmd = new List<string>();
+                        //parms.Cmd.Add("/bin/sh"); parms.Cmd.Add("-c"); parms.Cmd.Add(procArgs);
 
                         // 不要讓程式自己Attach以免Log混亂
                         parms.AttachStdout = false;
