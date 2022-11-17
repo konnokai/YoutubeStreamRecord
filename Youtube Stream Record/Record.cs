@@ -25,6 +25,7 @@ namespace Youtube_Stream_Record
         {
             string channelId, channelTitle;
             id = id.Replace("@", "-");
+            isDisableRedis = argIsDisableRedis;
 
             #region 初始化
             if (!isDisableRedis)
@@ -111,7 +112,6 @@ namespace Youtube_Stream_Record
                 Log.Info("不自動從頭開始錄影");
 
             string chatRoomId = "";
-            isDisableRedis = argIsDisableRedis;
             #endregion
 
             using (HttpClient httpClient = new HttpClient())
@@ -190,11 +190,11 @@ namespace Youtube_Stream_Record
                     }
                     #endregion
 
+                    bool isCanNotRecordMemberOnlyStream = false;
                     #region 3. 開始錄製直播
                     do
                     {
                         if (Utility.IsLiveEnd(videoId, true, isDisableRedis)) break;
-
                         fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
                         tempPath += $"{DateTime.Now:yyyyMMdd}{Utility.GetEnvSlash()}";
                         if (!Directory.Exists(tempPath)) Directory.CreateDirectory(tempPath);
@@ -251,36 +251,60 @@ namespace Youtube_Stream_Record
                         // --live-from-start 太吃硬碟隨機讀寫
                         // --embed-metadata --embed-thumbnail 會導致不定時卡住，先移除
                         process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --mark-watched {arguments}";
+                        process.StartInfo.RedirectStandardError= true;
+                        process.ErrorDataReceived += (sender, e) =>
+                        {
+                            try
+                            {
+                                if (string.IsNullOrEmpty(e.Data))
+                                    return;
+
+                                Log.Error(e.Data);
+
+                                if (e.Data.Contains("members-only content"))
+                                {
+                                    Log.Error("檢測到無法讀取的會限");
+                                    ProcessUtils.Kill(process, Signum.SIGQUIT);
+                                    isCanNotRecordMemberOnlyStream = true;
+                                }
+                            }
+                            catch { }
+                        };
 
                         Log.Info(process.StartInfo.Arguments);
 
                         process.Start();
+                        process.BeginErrorReadLine();
                         process.WaitForExit();
+                        process.CancelErrorRead();
 
                         Utility.IsClose = true;
                         Log.Info($"錄影結束");
                         cancellationToken.Cancel();
 
-                        // 確定直播是否結束
-                        if (Utility.IsLiveEnd(videoId, false, isDisableRedis)) break;
+                        // 確定直播是否結束或是否為會限直播
+                        if (Utility.IsLiveEnd(videoId, false, isDisableRedis) || isCanNotRecordMemberOnlyStream) break;
                     } while (!Utility.IsClose);
                     #endregion
 
                     #region 4. 直播結束後的保存處理
-                    if (!string.IsNullOrEmpty(fileName) && Utility.IsDelLive) // 如果被刪檔就保存到unarchivedOutputPath
+                    if (!isCanNotRecordMemberOnlyStream) // 如果該直播沒被判定成不能錄影的會限直播的話
                     {
-                        Log.Info($"已刪檔直播，移動資料");
-                        MoveVideo(unarchivedOutputPath, "youtube.unarchived");
-                    }
-                    else if (!string.IsNullOrEmpty(fileName) && Utility.IsMemberOnly(videoId)) // 如果轉會限也保存到unarchivedOutputPath
-                    {
-                        Log.Info($"已轉會限影片，移動資料");
-                        MoveVideo(unarchivedOutputPath, "youtube.memberonly");
-                    }
-                    else if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath)) // 否則就保存到outputPath
-                    {
-                        Log.Info("將直播轉移至保存點");
-                        MoveVideo(outputPath, "youtube.endstream");
+                        if (!string.IsNullOrEmpty(fileName) && Utility.IsDelLive) // 如果被刪檔就保存到unarchivedOutputPath
+                        {
+                            Log.Info($"已刪檔直播，移動資料");
+                            MoveVideo(unarchivedOutputPath, "youtube.unarchived");
+                        }
+                        else if (!string.IsNullOrEmpty(fileName) && Utility.IsMemberOnly(videoId)) // 如果是會限直播也保存到unarchivedOutputPath
+                        {
+                            Log.Info($"已轉會限影片，移動資料");
+                            MoveVideo(unarchivedOutputPath, "youtube.memberonly");
+                        }
+                        else if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath)) // 否則就保存到outputPath
+                        {
+                            Log.Info("將直播轉移至保存點");
+                            MoveVideo(outputPath, "youtube.endstream");
+                        }
                     }
                     #endregion
 
@@ -336,13 +360,13 @@ namespace Youtube_Stream_Record
             catch (ArgumentNullException)
             {
                 Log.Warn("非直播影片或已下播，已略過");
-                return Status.IsChatRoom;
+                return Status.Deleted;
             }
 
-            if (videoResult.Items[0].LiveStreamingDetails.ActualEndTime != null)
+            if (videoResult.Items[0].LiveStreamingDetails.ActualEndTime.HasValue)
             {
                 Log.Warn("該直播已結束，已略過");
-                return Status.IsChatRoom;
+                return Status.IsClose;
             }
             #endregion
 
