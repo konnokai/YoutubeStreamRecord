@@ -27,6 +27,13 @@ namespace Youtube_Stream_Record
                 Utility.IsClose = true;
             };
 
+            // https://blog.csdn.net/ahilll/article/details/82344402
+            // 不知道有沒有用就是
+            AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+            {
+                Utility.IsClose = true;
+            };
+
             Utility.YouTube = new YouTubeService(new BaseClientService.Initializer
             {
                 ApplicationName = "Bot",
@@ -53,6 +60,8 @@ namespace Youtube_Stream_Record
 #else
             if (Utility.InDocker && result == ResultType.Error)
                 Environment.Exit(3);
+
+            Environment.Exit(0);
 #endif
         }
         
