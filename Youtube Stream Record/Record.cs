@@ -120,6 +120,7 @@ namespace Youtube_Stream_Record
                 {
                     bool hasCommingStream = false;
                     string web;
+                    Utility.IsDelLive = false;
 
                     #region 1. 檢測是否有直播待機所以及直播影片Id
                     if (videoId == "")
@@ -192,7 +193,7 @@ namespace Youtube_Stream_Record
                     #region 3. 開始錄製直播
                     do
                     {
-                        if (Utility.IsLiveEnd(videoId, isDisableRedis)) break;
+                        if (Utility.IsLiveEnd(videoId, true, isDisableRedis)) break;
 
                         fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
                         tempPath += $"{DateTime.Now:yyyyMMdd}{Utility.GetEnvSlash()}";
@@ -261,7 +262,7 @@ namespace Youtube_Stream_Record
                         cancellationToken.Cancel();
 
                         // 確定直播是否結束
-                        if (Utility.IsLiveEnd(videoId, isDisableRedis)) break;
+                        if (Utility.IsLiveEnd(videoId, false, isDisableRedis)) break;
                     } while (!Utility.IsClose);
                     #endregion
 

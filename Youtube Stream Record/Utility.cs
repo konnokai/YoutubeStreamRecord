@@ -164,7 +164,7 @@ namespace Youtube_Stream_Record
             return Convert.ChangeType(value, T);
         }
 
-        public static bool IsLiveEnd(string videoId, bool isDisableRedis)
+        public static bool IsLiveEnd(string videoId, bool isFirstCheck, bool isDisableRedis)
         {
             var video = YouTube.Videos.List("snippet");
             video.Id = videoId;
@@ -172,10 +172,10 @@ namespace Youtube_Stream_Record
 
             try
             {
-                if (videoResult2.Items.Count == 0)
+                if (!videoResult2.Items.Any())
                 {
                     IsDelLive = true;
-                    if (!isDisableRedis)
+                    if (isFirstCheck && !isDisableRedis)
                         Redis.GetSubscriber().Publish("youtube.deletestream", videoId);
                     return true;
                 }
