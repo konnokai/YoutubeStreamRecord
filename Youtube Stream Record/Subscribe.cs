@@ -74,14 +74,6 @@ namespace Youtube_Stream_Record
                 videoId = videoId.ToString().Replace("-", "@");
                 Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
 
-                List<string> procList = new();
-                procList.Add("dotnet"); procList.Add("\"Youtube Stream Record.dll\"");
-                procList.Add("once"); procList.Add(videoId);
-                procList.Add("-o"); procList.Add($"\"{outputPath}\"");
-                procList.Add("-t"); procList.Add($"\"{tempPath}\"");
-                procList.Add("-u"); procList.Add($"\"{unarchivedOutputPath}\"");
-                procList.Add(isDisableLiveFromStart ? " --disable-live-from-start" : "");
-
                 string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
                     $"once {videoId} " +
                     $"-o \"{outputPath}\" " +
@@ -93,11 +85,6 @@ namespace Youtube_Stream_Record
                 {
                     if (Utility.InDocker && dockerClient != null)
                     {
-                        // 在Docker環境內的話則直接指定預設路徑
-                        outputPath = "/output";
-                        tempPath = "/temp_path";
-                        unarchivedOutputPath = "/unarchived";
-
                         var parms = new CreateContainerParameters();
                         parms.Image = "youtube-record:latest";
                         parms.Name = $"record-{videoId.ToString().Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss}";
@@ -119,10 +106,14 @@ namespace Youtube_Stream_Record
                         parms.Labels.Add("me.konnokai.record.channel.title", snippetData.ChannelTitle);
                         parms.Labels.Add("me.konnokai.record.channel.id", snippetData.ChannelId);
 
-                        parms.Entrypoint = procList;
-
-                        //parms.Cmd = new List<string>();
-                        //parms.Cmd.Add("/bin/sh"); parms.Cmd.Add("-c"); parms.Cmd.Add(procArgs);
+                        // 在Docker環境內的話則直接指定預設路徑
+                        parms.Entrypoint = new List<string>();
+                        parms.Entrypoint.Add("dotnet"); parms.Entrypoint.Add("Youtube Stream Record.dll");
+                        parms.Entrypoint.Add("once"); parms.Entrypoint.Add(videoId);
+                        parms.Entrypoint.Add("-o"); parms.Entrypoint.Add("/output");
+                        parms.Entrypoint.Add("-t"); parms.Entrypoint.Add("/temp_path");
+                        parms.Entrypoint.Add("-u"); parms.Entrypoint.Add("/unarchived");
+                        parms.Entrypoint.Add(isDisableLiveFromStart ? "--disable-live-from-start" : "");
 
                         // 不要讓程式自己Attach以免Log混亂
                         parms.AttachStdout = false;

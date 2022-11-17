@@ -251,7 +251,7 @@ namespace Youtube_Stream_Record
                         // --live-from-start 太吃硬碟隨機讀寫
                         // --embed-metadata --embed-thumbnail 會導致不定時卡住，先移除
                         process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --mark-watched {arguments}";
-                        process.StartInfo.RedirectStandardError= true;
+                        process.StartInfo.RedirectStandardError = true;
                         process.ErrorDataReceived += (sender, e) =>
                         {
                             try
@@ -259,7 +259,7 @@ namespace Youtube_Stream_Record
                                 if (string.IsNullOrEmpty(e.Data))
                                     return;
 
-                                Log.Error(e.Data);
+                                Console.WriteLine(e.Data);
 
                                 if (e.Data.Contains("members-only content"))
                                 {
@@ -308,7 +308,7 @@ namespace Youtube_Stream_Record
                     }
                     #endregion
 
-                    if (!isDisableRedis) 
+                    if (!isDisableRedis)
                         await Utility.Redis.GetDatabase().SetRemoveAsync("youtube.nowRecord", videoId);
                 } while (isLoop && !Utility.IsClose);
             }

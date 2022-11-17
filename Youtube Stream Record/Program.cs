@@ -28,9 +28,7 @@ namespace Youtube_Stream_Record
                 ApiKey = Utility.BotConfig.GoogleApiKey,
             });
 
-#if DEBUG
             Console.WriteLine(string.Join(' ', args));
-#endif
 
             var result = Parser.Default.ParseArguments<LoopOptions, OnceOptions, SubOptions>(args)
                 .MapResult(
