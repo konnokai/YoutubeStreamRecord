@@ -15,6 +15,7 @@ namespace Youtube_Stream_Record
             Log.Info($"接收執行參數: {string.Join(' ', args)}");
             Utility.BotConfig.InitBotConfig();
 
+            // https://stackoverflow.com/a/52029759
             Console.OutputEncoding = System.Text.Encoding.UTF8;
             Console.CancelKeyPress += (sender, e) =>
             {
