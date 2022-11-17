@@ -12,6 +12,7 @@ namespace Youtube_Stream_Record
 
         static void Main(string[] args)
         {
+            Log.Info($"接收執行參數: {string.Join(' ', args)}");
             Utility.BotConfig.InitBotConfig();
 
             Console.OutputEncoding = System.Text.Encoding.UTF8;
@@ -27,8 +28,6 @@ namespace Youtube_Stream_Record
                 ApplicationName = "Bot",
                 ApiKey = Utility.BotConfig.GoogleApiKey,
             });
-
-            Console.WriteLine(string.Join(' ', args));
 
             var result = Parser.Default.ParseArguments<LoopOptions, OnceOptions, SubOptions>(args)
                 .MapResult(
