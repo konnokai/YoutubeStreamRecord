@@ -190,7 +190,7 @@ namespace Youtube_Stream_Record
                     }
                     #endregion
 
-                    bool isCanNotRecordMemberOnlyStream = false;
+                    bool isCanNotRecordStream = false;
                     #region 3. 開始錄製直播
                     do
                     {
@@ -265,7 +265,13 @@ namespace Youtube_Stream_Record
                                 {
                                     Log.Error("檢測到無法讀取的會限");
                                     ProcessUtils.Kill(process, Signum.SIGQUIT);
-                                    isCanNotRecordMemberOnlyStream = true;
+                                    isCanNotRecordStream = true;
+                                }
+                                else if (e.Data.Contains("video is private"))
+                                {
+                                    Log.Error("已私人化，取消錄影");
+                                    ProcessUtils.Kill(process, Signum.SIGQUIT);
+                                    isCanNotRecordStream = true;
                                 }
                             }
                             catch { }
@@ -283,12 +289,12 @@ namespace Youtube_Stream_Record
                         cancellationToken.Cancel();
 
                         // 確定直播是否結束或是否為會限直播
-                        if (Utility.IsLiveEnd(videoId, false, isDisableRedis) || isCanNotRecordMemberOnlyStream) break;
+                        if (Utility.IsLiveEnd(videoId, false, isDisableRedis) || isCanNotRecordStream) break;
                     } while (!Utility.IsClose);
                     #endregion
 
                     #region 4. 直播結束後的保存處理
-                    if (!isCanNotRecordMemberOnlyStream) // 如果該直播沒被判定成不能錄影的會限直播的話
+                    if (!isCanNotRecordStream) // 如果該直播沒被判定成不能錄影的會限直播的話
                     {
                         if (!string.IsNullOrEmpty(fileName) && Utility.IsDelLive) // 如果被刪檔就保存到unarchivedOutputPath
                         {
