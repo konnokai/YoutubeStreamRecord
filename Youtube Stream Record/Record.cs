@@ -273,6 +273,12 @@ namespace Youtube_Stream_Record
                                     ProcessUtils.Kill(process, Signum.SIGQUIT);
                                     isCanNotRecordStream = true;
                                 }
+                                else if (e.Data.Contains("video has been removed"))
+                                {
+                                    Log.Error("已移除，取消錄影");
+                                    ProcessUtils.Kill(process, Signum.SIGQUIT);
+                                    isCanNotRecordStream = true;
+                                }
                             }
                             catch { }
                         };
