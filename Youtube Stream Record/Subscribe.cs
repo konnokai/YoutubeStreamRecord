@@ -89,31 +89,44 @@ namespace Youtube_Stream_Record
                         parms.Image = "youtube-record:latest";
                         parms.Name = $"record-{videoId.ToString().Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss}";
 
-                        parms.Env = new List<string>();
-                        parms.Env.Add($"GoogleApiKey={Utility.GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}");
-                        parms.Env.Add($"RedisOption={Utility.GetEnvironmentVariable("RedisOption", typeof(string), true)}");
+                        parms.Env = new List<string>
+                        {
+                            $"GoogleApiKey={Utility.GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}",
+                            $"RedisOption={Utility.GetEnvironmentVariable("RedisOption", typeof(string), true)}"
+                        };
 
-                        List<string> binds = new List<string>();
-                        binds.Add($"{Utility.GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output");
-                        binds.Add($"{Utility.GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path");
-                        binds.Add($"{Utility.GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}:/unarchived");
-                        binds.Add($"{Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt");
+                        List<string> binds = new List<string>
+                        {
+                            $"{Utility.GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output",
+                            $"{Utility.GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path",
+                            $"{Utility.GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}:/unarchived",
+                            $"{Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt"
+                        };
                         parms.HostConfig = new HostConfig() { Binds = binds };
 
-                        parms.Labels = new Dictionary<string, string>();
-                        parms.Labels.Add("me.konnokai.record.video.title", snippetData.Title);
-                        parms.Labels.Add("me.konnokai.record.video.id", videoId.ToString().Replace("@", "-"));
-                        parms.Labels.Add("me.konnokai.record.channel.title", snippetData.ChannelTitle);
-                        parms.Labels.Add("me.konnokai.record.channel.id", snippetData.ChannelId);
+                        parms.Labels = new Dictionary<string, string>
+                        {
+                            { "me.konnokai.record.video.title", snippetData.Title },
+                            { "me.konnokai.record.video.id", videoId.ToString().Replace("@", "-") },
+                            { "me.konnokai.record.channel.title", snippetData.ChannelTitle },
+                            { "me.konnokai.record.channel.id", snippetData.ChannelId }
+                        };
 
                         // 在Docker環境內的話則直接指定預設路徑
-                        parms.Entrypoint = new List<string>();
-                        parms.Entrypoint.Add("dotnet"); parms.Entrypoint.Add("Youtube Stream Record.dll");
-                        parms.Entrypoint.Add("once"); parms.Entrypoint.Add(videoId);
-                        parms.Entrypoint.Add("-o"); parms.Entrypoint.Add("/output");
-                        parms.Entrypoint.Add("-t"); parms.Entrypoint.Add("/temp_path");
-                        parms.Entrypoint.Add("-u"); parms.Entrypoint.Add("/unarchived");
-                        parms.Entrypoint.Add(isDisableLiveFromStart ? "--disable-live-from-start" : "");
+                        parms.Entrypoint = new List<string>
+                        {
+                            "dotnet",
+                            "Youtube Stream Record.dll",
+                            "once",
+                            videoId,
+                            "-o",
+                            "/output",
+                            "-t",
+                            "/temp_path",
+                            "-u",
+                            "/unarchived",
+                            isDisableLiveFromStart ? "--disable-live-from-start" : ""
+                        };
 
                         // 不要讓程式自己Attach以免Log混亂
                         parms.AttachStdout = false;
