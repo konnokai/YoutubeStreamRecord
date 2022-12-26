@@ -86,7 +86,7 @@ namespace Youtube_Stream_Record
                     if (Utility.InDocker && dockerClient != null)
                     {
                         var parms = new CreateContainerParameters();
-                        parms.Image = "youtube-record:latest";
+                        parms.Image = "jun112561/youtube-record:master";
                         parms.Name = $"record-{videoId.ToString().Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss}";
 
                         parms.Env = new List<string>
