@@ -2,17 +2,19 @@
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
 using System;
+using System.Reflection;
 
 namespace Youtube_Stream_Record
 {
     public static class Program
     {
+        public static string VERSION => GetLinkerTime(Assembly.GetEntryAssembly());
         public enum Status { Ready, Deleted, IsClose, IsChatRoom, IsChangeTime };
         public enum ResultType { Loop, Once, Sub, Error, None }
 
         static void Main(string[] args)
         {
-            Log.Info($"接收執行參數: {string.Join(' ', args)}");
+            Log.Info($"建置版本: {VERSION}，接收執行參數: {string.Join(' ', args)}");
             Utility.BotConfig.InitBotConfig();
 
             // https://stackoverflow.com/a/52029759
@@ -50,7 +52,25 @@ namespace Youtube_Stream_Record
             Environment.Exit(0);
 #endif
         }
-        
+
+        public static string GetLinkerTime(Assembly assembly)
+        {
+            const string BuildVersionMetadataPrefix = "+build";
+
+            var attribute = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            if (attribute?.InformationalVersion != null)
+            {
+                var value = attribute.InformationalVersion;
+                var index = value.IndexOf(BuildVersionMetadataPrefix);
+                if (index > 0)
+                {
+                    value = value[(index + BuildVersionMetadataPrefix.Length)..];
+                    return value;
+                }
+            }
+            return default;
+        }
+
         public class RequiredOptions
         {
             [Option('o', "output", Required = true, HelpText = "輸出路徑")]

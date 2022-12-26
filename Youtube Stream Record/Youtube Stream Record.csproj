@@ -22,4 +22,7 @@
     <PackageReference Include="System.Management" Version="6.0.0" />
   </ItemGroup>
 
+	<PropertyGroup>
+		<SourceRevisionId>build$([System.DateTime]::UtcNow.AddHours(8).ToString("yyyy/MM/dd HH:mm:ss"))</SourceRevisionId>
+	</PropertyGroup>
 </Project>
