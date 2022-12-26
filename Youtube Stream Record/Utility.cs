@@ -166,7 +166,7 @@ namespace Youtube_Stream_Record
 
         public static bool IsLiveEnd(string videoId, bool isFirstCheck, bool isDisableRedis)
         {
-            var video = YouTube.Videos.List("snippet");
+            var video = YouTube.Videos.List("snippet,liveStreamingDetails");
             video.Id = videoId;
             var videoResult2 = video.Execute();
 
@@ -179,7 +179,7 @@ namespace Youtube_Stream_Record
                         Redis.GetSubscriber().Publish("youtube.deletestream", videoId);
                     return true;
                 }
-                if (videoResult2.Items[0].Snippet.LiveBroadcastContent == "none")
+                if (videoResult2.Items[0].LiveStreamingDetails.ActualEndTime.HasValue)
                 {                    
                     return true;
                 }
