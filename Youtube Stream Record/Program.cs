@@ -14,7 +14,8 @@ namespace Youtube_Stream_Record
 
         static void Main(string[] args)
         {
-            Log.Info($"建置版本: {VERSION}，接收執行參數: {string.Join(' ', args)}");
+            Log.Info($"建置版本: {VERSION}");
+            Log.Info($"執行參數: {string.Join(' ', args)}");
             Utility.BotConfig.InitBotConfig();
 
             // https://stackoverflow.com/a/52029759
