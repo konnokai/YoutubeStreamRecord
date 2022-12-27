@@ -203,7 +203,7 @@ namespace Youtube_Stream_Record
 
                         if (!isDisableRedis)
                         {
-                            Utility.Redis.GetSubscriber().Publish("youtube.startstream", JsonConvert.SerializeObject(new StreamRecordJson() { VideoId = videoId, RecordFileName = fileName }));
+                            Utility.Redis.GetSubscriber().Publish("youtube.startstream", videoId);
                             await Utility.Redis.GetDatabase().SetAddAsync("youtube.nowRecord", videoId);
                         }
 

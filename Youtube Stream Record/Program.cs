@@ -115,10 +115,4 @@ namespace Youtube_Stream_Record
             public bool AutoDeleteArchived { get; set; }
         }
     }
-
-    class StreamRecordJson
-    {
-        public string VideoId { get; set; }
-        public string RecordFileName { get; set; }
-    }
 }
