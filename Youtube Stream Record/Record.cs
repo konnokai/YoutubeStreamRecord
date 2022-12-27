@@ -382,9 +382,15 @@ namespace Youtube_Stream_Record
             }
             #endregion
 
-            #region 等待直播排程時間抵達...
-            Log.Info($"直播開始時間: {streamScheduledStartTime}");
-            if (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now)
+            #region 已開播就直接錄影
+            Log.Info($"直播預計開始時間: {streamScheduledStartTime}");
+            if (videoResult.Items[0].LiveStreamingDetails.ActualStartTime.HasValue)
+            {
+                Log.Info($"已開台，直接開始錄影，開台時間: {videoResult.Items[0].LiveStreamingDetails.ActualStartTime.Value}");
+            }
+            #endregion
+            #region 還沒開播就等待直播排程時間抵達...
+            else if (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now)
             {
                 Log.Info("等待排程開台的時間中...");
                 int i = 900;
