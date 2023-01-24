@@ -1,5 +1,4 @@
-﻿using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -267,7 +266,7 @@ namespace Youtube_Stream_Record
                                     ProcessUtils.Kill(process, Signum.SIGQUIT);
                                     isCanNotRecordStream = true;
                                 }
-                                else if (e.Data.Contains("video is private"))
+                                else if (e.Data.Contains("video is private") || e.Data.Contains("Private video"))
                                 {
                                     Log.Error("已私人化，取消錄影");
                                     ProcessUtils.Kill(process, Signum.SIGQUIT);
@@ -316,6 +315,7 @@ namespace Youtube_Stream_Record
                         {
                             Log.Info("將直播轉移至保存點");
                             MoveVideo(outputPath, "youtube.endstream");
+                            Utility.Redis.GetSubscriber().Publish("youtube.recorddone", videoId);
                         }
                     }
                     #endregion

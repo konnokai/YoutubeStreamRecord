@@ -1,6 +1,8 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
+using Google.Apis.YouTube.v3.Data;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -189,6 +191,37 @@ namespace Youtube_Stream_Record
             sub.Subscribe("youtube.memberonly", (channel, videoId) =>
             {
                 Log.Warn($"已轉會限直播: {videoId}");
+            });
+
+            
+            // 要考量到如果有直播超過六小時重新錄影的話則需要排除
+            // 應該要從錄影時間去判斷
+            sub.Subscribe("youtube.recorddone", async (channel, videoId) =>
+            {
+                var parms = new ContainersPruneParameters() 
+                {
+                    // https://github.com/dotnet/Docker.DotNet/issues/489
+                    // 媽的微軟連summary都不寫是三小==
+                    Filters = new Dictionary<string, IDictionary<string, bool>>
+                    {
+                        ["label"] = new Dictionary<string, bool>
+                        {
+                            [$"me.konnokai.record.video.id={videoId}"] = true,
+                        }
+                    }
+                };
+
+                try
+                {
+                    var containersPruneResponse = await dockerClient.Containers.PruneContainersAsync(parms);
+                    Log.Info($"已清除容器: {videoId}");
+                    Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
+                    Log.Info($"釋放空間: {containersPruneResponse.SpaceReclaimed}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"清除容器失敗-{videoId}: {ex}");
+                }
             });
 
             Log.Info($"訂閱模式，保存路徑: {outputPath}");
