@@ -195,6 +195,8 @@ namespace Youtube_Stream_Record
 
             sub.Subscribe("youtube.endstream", async (channel, videoId) =>
             {
+                await Task.Delay(5000); // 等待五秒鐘確保容器已關閉後再清理
+
                 var parms = new ContainersPruneParameters() 
                 {
                     // https://github.com/dotnet/Docker.DotNet/issues/489
@@ -211,8 +213,15 @@ namespace Youtube_Stream_Record
                 try
                 {
                     var containersPruneResponse = await dockerClient.Containers.PruneContainersAsync(parms);
-                    Log.Info($"已清除容器: {videoId}");
-                    Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
+                    if (containersPruneResponse.ContainersDeleted.Any())
+                    {
+                        Log.Info($"已清除容器: {videoId}");
+                        Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
+                    }
+                    else
+                    {
+                        Log.Warn($"清除容器失敗-{videoId}: API未回傳容器Id");
+                    }
                 }
                 catch (Exception ex)
                 {
