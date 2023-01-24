@@ -213,7 +213,7 @@ namespace Youtube_Stream_Record
                 try
                 {
                     var containersPruneResponse = await dockerClient.Containers.PruneContainersAsync(parms);
-                    if (containersPruneResponse.ContainersDeleted.Any())
+                    if (containersPruneResponse != null && containersPruneResponse.ContainersDeleted.Any())
                     {
                         Log.Info($"已清除容器: {videoId}");
                         Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
