@@ -263,19 +263,19 @@ namespace Youtube_Stream_Record
                                 if (e.Data.Contains("members-only content"))
                                 {
                                     Log.Error("檢測到無法讀取的會限");
-                                    ProcessUtils.Kill(process, Signum.SIGQUIT);
+                                    process.Kill(Signum.SIGQUIT);
                                     isCanNotRecordStream = true;
                                 }
                                 else if (e.Data.Contains("video is private") || e.Data.Contains("Private video"))
                                 {
                                     Log.Error("已私人化，取消錄影");
-                                    ProcessUtils.Kill(process, Signum.SIGQUIT);
+                                    process.Kill(Signum.SIGQUIT);
                                     isCanNotRecordStream = true;
                                 }
                                 else if (e.Data.Contains("video has been removed"))
                                 {
                                     Log.Error("已移除，取消錄影");
-                                    ProcessUtils.Kill(process, Signum.SIGQUIT);
+                                    process.Kill(Signum.SIGQUIT);
                                     isCanNotRecordStream = true;
                                 }
                             }
