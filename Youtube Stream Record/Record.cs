@@ -315,7 +315,6 @@ namespace Youtube_Stream_Record
                         {
                             Log.Info("將直播轉移至保存點");
                             MoveVideo(outputPath, "youtube.endstream");
-                            Utility.Redis.GetSubscriber().Publish("youtube.recorddone", videoId);
                         }
                     }
                     #endregion

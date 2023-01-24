@@ -193,10 +193,7 @@ namespace Youtube_Stream_Record
                 Log.Warn($"已轉會限直播: {videoId}");
             });
 
-            
-            // 要考量到如果有直播超過六小時重新錄影的話則需要排除
-            // 應該要從錄影時間去判斷
-            sub.Subscribe("youtube.recorddone", async (channel, videoId) =>
+            sub.Subscribe("youtube.endstream", async (channel, videoId) =>
             {
                 var parms = new ContainersPruneParameters() 
                 {
@@ -216,7 +213,6 @@ namespace Youtube_Stream_Record
                     var containersPruneResponse = await dockerClient.Containers.PruneContainersAsync(parms);
                     Log.Info($"已清除容器: {videoId}");
                     Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
-                    Log.Info($"釋放空間: {containersPruneResponse.SpaceReclaimed}");
                 }
                 catch (Exception ex)
                 {
