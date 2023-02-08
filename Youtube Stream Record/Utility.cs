@@ -180,7 +180,7 @@ namespace Youtube_Stream_Record
                     return true;
                 }
                 if (videoResult2.Items[0].LiveStreamingDetails.ActualEndTime.HasValue)
-                {                    
+                {
                     return true;
                 }
             }
@@ -202,6 +202,12 @@ namespace Youtube_Stream_Record
             {
                 Log.Warn($"此為會限影片: {videoId}");
                 return true;
+            }
+            catch (Exception ex) when (ex.Message.Contains("parameter has disabled comments"))
+            {
+                Log.Warn($"無法檢測是否為會限影片: {videoId}");
+                Log.Warn($"已關閉留言");
+                return false;
             }
             catch (Exception ex)
             {
