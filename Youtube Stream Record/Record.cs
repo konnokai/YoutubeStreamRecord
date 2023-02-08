@@ -239,6 +239,7 @@ namespace Youtube_Stream_Record
 
                             if (!isReceiveDownload)
                             {
+                                Log.Warn("已等待一小時但尚未開始直播，取消錄影");
                                 process.Kill(Signum.SIGQUIT);
                                 isCanNotRecordStream = true;
                             }
