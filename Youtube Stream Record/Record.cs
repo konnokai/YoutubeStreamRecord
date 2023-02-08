@@ -189,22 +189,17 @@ namespace Youtube_Stream_Record
                     }
                     #endregion
 
-                    bool isCanNotRecordStream = false;
+                    bool isCanNotRecordStream = false, isReceiveDownload = false;
                     #region 3. 開始錄製直播
                     do
                     {
                         if (Utility.IsLiveEnd(videoId, true, isDisableRedis)) break;
+
                         fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
                         tempPath += $"{DateTime.Now:yyyyMMdd}{Utility.GetEnvSlash()}";
                         if (!Directory.Exists(tempPath)) Directory.CreateDirectory(tempPath);
                         outputPath += $"{DateTime.Now:yyyyMMdd}{Utility.GetEnvSlash()}";
                         if (!Directory.Exists(outputPath)) Directory.CreateDirectory(outputPath);
-
-                        if (!isDisableRedis)
-                        {
-                            Utility.Redis.GetSubscriber().Publish("youtube.startstream", videoId);
-                            await Utility.Redis.GetDatabase().SetAddAsync("youtube.nowRecord", videoId);
-                        }
 
                         CancellationTokenSource cancellationToken = new CancellationTokenSource();
                         CancellationToken token = cancellationToken.Token;
@@ -213,24 +208,7 @@ namespace Youtube_Stream_Record
                         // 但從頭開始錄影好像只能錄兩小時 :thinking:
                         string arguments = "--live-from-start -f bestvideo+bestaudio ";
                         if (isDisableLiveFromStart)
-                        {
                             arguments = "-f b ";
-                            #region 每六小時重新執行錄影
-                            int waitTime = (5 * 60 * 60) + (59 * 60);
-                            var task = Task.Run(() =>
-                            {
-                                do
-                                {
-                                    waitTime--;
-                                    Thread.Sleep(1000);
-                                    if (token.IsCancellationRequested)
-                                        return;
-                                } while (waitTime >= 0);
-
-                                if (!isDisableRedis) Utility.Redis.GetSubscriber().Publish("youtube.record", videoId);
-                            });
-                            #endregion
-                        }
 
                         Log.Info($"存檔名稱: {fileName}");
                         var process = new Process();
@@ -247,18 +225,78 @@ namespace Youtube_Stream_Record
                         else
                             arguments += $"--cookies-from-browser {browser}";
 
+                        #region 如果過了一小時還沒開始錄影就取消本次錄影
+                        var task = Task.Run(async () =>
+                        {
+                            int waitTime = 10;
+                            do
+                            {
+                                waitTime--;
+                                await Task.Delay(1000);
+                                if (token.IsCancellationRequested)
+                                    return;
+                            } while (waitTime >= 0);
+
+                            if (!isReceiveDownload)
+                            {
+                                process.Kill(Signum.SIGQUIT);
+                                isCanNotRecordStream = true;
+                            }
+                        });
+                        #endregion
+
                         // --live-from-start 太吃硬碟隨機讀寫
                         // --embed-metadata --embed-thumbnail 會導致不定時卡住，先移除
                         process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video {startStreamLoopTime} --mark-watched {arguments}";
-                        process.StartInfo.RedirectStandardError = true;
-                        process.ErrorDataReceived += (sender, e) =>
+                        process.StartInfo.RedirectStandardOutput = true;
+                        process.OutputDataReceived += (sender, e) =>
                         {
                             try
                             {
                                 if (string.IsNullOrEmpty(e.Data))
                                     return;
 
+                                // 不顯示wait開頭的訊息避免吃爆Portainer的log
+                                if (e.Data.ToLower().StartsWith("[wait]"))
+                                    return;
+
                                 Console.WriteLine(e.Data);
+
+                                // 應該能用這個來判定開始直播
+                                if (e.Data.ToLower().StartsWith("[download]"))
+                                {
+                                    if (isReceiveDownload)
+                                        return;
+
+                                    isReceiveDownload = true;
+
+                                    Log.Info("開始直播!");
+
+                                    if (!isDisableRedis)
+                                    {
+                                        Utility.Redis.GetSubscriber().Publish("youtube.startstream", videoId);
+                                        Utility.Redis.GetDatabase().SetAdd("youtube.nowRecord", videoId);
+
+                                        if (isDisableLiveFromStart)
+                                        {
+                                            #region 每六小時重新執行錄影
+                                            int waitTime = (5 * 60 * 60) + (59 * 60);
+                                            var task = Task.Run(async () =>
+                                            {
+                                                do
+                                                {
+                                                    waitTime--;
+                                                    await Task.Delay(1000);
+                                                    if (token.IsCancellationRequested)
+                                                        return;
+                                                } while (waitTime >= 0);
+
+                                                Utility.Redis.GetSubscriber().Publish("youtube.record", videoId);
+                                            });
+                                            #endregion
+                                        }
+                                    }
+                                }
 
                                 if (e.Data.Contains("members-only content"))
                                 {
@@ -285,9 +323,9 @@ namespace Youtube_Stream_Record
                         Log.Info(process.StartInfo.Arguments);
 
                         process.Start();
-                        process.BeginErrorReadLine();
+                        process.BeginOutputReadLine();
                         process.WaitForExit();
-                        process.CancelErrorRead();
+                        process.CancelOutputRead();
 
                         Utility.IsClose = true;
                         Log.Info($"錄影結束");
@@ -324,7 +362,7 @@ namespace Youtube_Stream_Record
                 } while (isLoop && !Utility.IsClose);
             }
 
-            return (isLoop) ? ResultType.Loop : ResultType.Once;
+            return isLoop ? ResultType.Loop : ResultType.Once;
         }
 
         private static void MoveVideo(string outputPath, string redisChannel = "")
