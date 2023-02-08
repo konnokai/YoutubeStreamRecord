@@ -1,6 +1,7 @@
 # YT錄影小幫手
 
 需配置GoogleApiKey使用
+
 若要搭配直播小幫手使用，需要另外安裝 Redis Server 並使用 Subscribe 模式
 
 ## Docker環境，Sub模式
