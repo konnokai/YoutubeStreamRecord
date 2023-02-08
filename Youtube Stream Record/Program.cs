@@ -35,9 +35,9 @@ namespace Youtube_Stream_Record
 
             var result = Parser.Default.ParseArguments<LoopOptions, OnceOptions, SubOptions>(args)
                 .MapResult(
-                (LoopOptions lo)  => Record.StartRecord(lo.ChannelId, lo.OutputPath, lo.TempPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true, lo.DisableRedis,lo.DisableLiveFromStart).Result,
+                (LoopOptions lo) => Record.StartRecord(lo.ChannelId, lo.OutputPath, lo.TempPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true, lo.DisableRedis, lo.DisableLiveFromStart).Result,
                 (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime, false, oo.DisableRedis, oo.DisableLiveFromStart).Result,
-                (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.AutoDeleteArchived,so.DisableLiveFromStart).Result,
+                (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.AutoDeleteArchived, so.DisableLiveFromStart).Result,
                 Error => ResultType.None);
 
 #if DEBUG
@@ -107,7 +107,7 @@ namespace Youtube_Stream_Record
 
         [Verb("once", HelpText = "單次錄影")]
         public class OnceOptions : RecordOptions { }
-        
+
         [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
         public class SubOptions : RequiredOptions
         {

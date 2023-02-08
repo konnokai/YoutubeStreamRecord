@@ -1,8 +1,6 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
-using Google.Apis.YouTube.v3.Data;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -197,7 +195,7 @@ namespace Youtube_Stream_Record
             {
                 await Task.Delay(5000); // 等待五秒鐘確保容器已關閉後再清理
 
-                var parms = new ContainersPruneParameters() 
+                var parms = new ContainersPruneParameters()
                 {
                     // https://github.com/dotnet/Docker.DotNet/issues/489
                     // 媽的微軟連summary都不寫是三小==
