@@ -233,6 +233,7 @@ namespace Youtube_Stream_Record
 
             Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");
 
+            #region 自動刪除2天後的暫存存檔
             if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath))
             {
                 autoDeleteTempRecordTimer = new Timer((obj) =>
@@ -259,7 +260,9 @@ namespace Youtube_Stream_Record
                 }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
                 Log.Warn("已開啟自動刪除2天後的暫存存檔");
             }
+            #endregion
 
+            #region 自動刪除14天後的存檔
             if (autoDeleteArchived)
             {
                 autoDeleteArchivedTimer = new Timer((obj) =>
@@ -286,7 +289,9 @@ namespace Youtube_Stream_Record
                 }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
                 Log.Warn("已開啟自動刪除14天後的存檔");
             }
+            #endregion
 
+            #region 自動檢測昨天的私人存檔
             // 檢測昨天的直播是否有被私人但沒被移動到私人存檔保存區
             autoCheckIsLiveUnArchivedTimer = new Timer(async (obj) =>
             {
@@ -349,6 +354,7 @@ namespace Youtube_Stream_Record
                 }
             }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
             Log.Warn("已開啟自動檢測昨天的私人存檔");
+            #endregion
 
             if (isDisableLiveFromStart)
                 Log.Info("不自動從頭開始錄影");
