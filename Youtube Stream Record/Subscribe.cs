@@ -15,7 +15,7 @@ namespace Youtube_Stream_Record
 {
     public class Subscribe
     {
-        static Timer autoDeleteArchivedTimer, autoDeleteTempRecordTimer;
+        static Timer autoDeleteArchivedTimer, autoDeleteTempRecordTimer, autoCheckIsLiveUnArchivedTimer;
         public static async Task<ResultType> SubRecord(string outputPath, string tempPath, string unarchivedOutputPath, bool autoDeleteArchived, bool isDisableLiveFromStart = false)
         {
             try
@@ -223,7 +223,7 @@ namespace Youtube_Stream_Record
                 }
                 catch (Exception ex)
                 {
-                    Log.Error($"清除容器失敗-{videoId}: {ex}");
+                    Log.Error(ex, $"清除容器失敗-{videoId}");
                 }
             });
 
@@ -254,7 +254,7 @@ namespace Youtube_Stream_Record
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex.ToString());
+                        Log.Error(ex, "autoDeleteTempRecordTimer");
                     }
                 }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
                 Log.Warn("已開啟自動刪除2天後的暫存存檔");
@@ -281,11 +281,74 @@ namespace Youtube_Stream_Record
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex.ToString());
+                        Log.Error(ex, "autoDeleteArchivedTimer");
                     }
                 }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
                 Log.Warn("已開啟自動刪除14天後的存檔");
             }
+
+            // 檢測昨天的直播是否有被私人但沒被移動到私人存檔保存區
+            autoCheckIsLiveUnArchivedTimer = new Timer(async (obj) =>
+            {
+                try
+                {
+                    var list = Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly);
+                    string dirName = DateTime.Now.AddDays(-1).ToString("yyyyMMdd");
+
+                    if (list.Any((x) => x.EndsWith(dirName)))
+                    {
+                        dirName = list.Single((x) => x.EndsWith(dirName));
+                        Regex fileNameRegex = new Regex(@"youtube_(?'ChannelId'[\w\-\\_]{24})_(?'Date'\d{8})_(?'Time'\d{6})_(?'VideoId'[\w\-\\_]{11})\.(?'Ext'[\w]{2,4})");
+                        List<string> videoIdList = new List<string>();
+
+                        foreach (var item in Directory.GetFiles(dirName))
+                        {
+                            var regexResult = fileNameRegex.Match(item);
+                            if (!regexResult.Success) continue;
+
+                            if (!videoIdList.Contains(regexResult.Groups["VideoId"].Value))
+                                videoIdList.Add(regexResult.Groups["VideoId"].Value);
+                        }
+
+                        var videoDataFromApi = await Utility.GetSnippetDataByVideoIdAsync(videoIdList);
+                        if (videoDataFromApi == null)
+                        {
+                            Log.Error("videoIdFromApi 無資料");
+                            return;
+                        }
+
+                        foreach (var item in videoIdList)
+                        {
+                            if (!videoDataFromApi.Any((x) => x.Id == item))
+                            {
+                                Utility.Redis.GetSubscriber().Publish("youtube.unarchived", item);
+                                foreach (var videoFile in Directory.GetFiles(dirName, $"*{item}.???"))
+                                {
+                                    try
+                                    {
+                                        Log.Info($"移動 \"{videoFile}\" 至 \"{unarchivedOutputPath}{Path.GetFileName(videoFile)}\"");
+                                        File.Move($"{videoFile}", $"{unarchivedOutputPath}{Path.GetFileName(videoFile)}");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        if (Utility.InDocker) Log.Error(ex.ToString());
+                                        else File.AppendAllText($"{videoFile}_err.txt", ex.ToString());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Log.Warn($"{dirName} 不存在，略過私人影片檢測");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "autoCheckIsLiveUnArchivedTimer");
+                }
+            }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
+            Log.Warn("已開啟自動檢測昨天的私人存檔");
 
             if (isDisableLiveFromStart)
                 Log.Info("不自動從頭開始錄影");

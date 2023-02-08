@@ -3,6 +3,7 @@ using Google.Apis.YouTube.v3.Data;
 using HtmlAgilityPack;
 using StackExchange.Redis;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Management;
@@ -105,7 +106,7 @@ namespace Youtube_Stream_Record
             }
             catch (Exception ex)
             {
-                Log.Error(ex.Message + "\r\n" + ex.StackTrace);
+                Log.Error(ex, "GetChannelDataByChannelIdAsync");
                 return ("", "");
             }
         }
@@ -124,9 +125,34 @@ namespace Youtube_Stream_Record
             }
             catch (Exception ex)
             {
-                Log.Error(ex.Message + "\r\n" + ex.StackTrace);
+                Log.Error(ex, "GetSnippetDataByVideoIdAsync-Singel");
                 return null;
             }
+        }
+
+        public static async Task<IList<Video>> GetSnippetDataByVideoIdAsync(IEnumerable<string> videoId)
+        {
+            List<Video> videos = new List<Video>();
+
+            for (int i = 0; i < videoId.Count(); i += 50)
+            {
+                try
+                {
+                    var video = YouTube.Videos.List("snippet");
+                    video.Id = string.Join(',', videoId.Skip(i).Take(50));
+                    var response = await video.ExecuteAsync().ConfigureAwait(false);
+                    if (!response.Items.Any())
+                        continue;
+
+                    videos.AddRange(response.Items);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "GetSnippetDataByVideoIdAsync-Multi");
+                }
+            }
+
+            return videos;
         }
 
         public static string GetCommandLine(this Process process)
