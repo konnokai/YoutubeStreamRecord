@@ -228,7 +228,7 @@ namespace Youtube_Stream_Record
                         #region 如果過了一小時還沒開始錄影就取消本次錄影
                         var task = Task.Run(async () =>
                         {
-                            int waitTime = 10;
+                            int waitTime = 3600;
                             do
                             {
                                 waitTime--;
