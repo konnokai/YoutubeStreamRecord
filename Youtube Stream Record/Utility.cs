@@ -1,6 +1,7 @@
 ﻿using Google.Apis.YouTube.v3;
 using Google.Apis.YouTube.v3.Data;
 using HtmlAgilityPack;
+using Polly;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,7 @@ namespace Youtube_Stream_Record
 
         public static string GetEnvSlash()
             => (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "\\" : "/");
+
 
         public static async Task<string> GetChannelId(string channelUrl)
         {
@@ -113,11 +115,21 @@ namespace Youtube_Stream_Record
 
         public static async Task<VideoSnippet> GetSnippetDataByVideoIdAsync(string videoId)
         {
+            var pBreaker = Policy<VideoListResponse>
+               .Handle<Exception>()
+               .WaitAndRetryAsync(new TimeSpan[]
+               {
+                    TimeSpan.FromSeconds(1),
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromSeconds(4)
+               });
+
             try
             {
                 var video = YouTube.Videos.List("snippet");
                 video.Id = videoId;
-                var response = await video.ExecuteAsync().ConfigureAwait(false);
+
+                var response = await pBreaker.ExecuteAsync(() => video.ExecuteAsync());
                 if (!response.Items.Any())
                     return null;
 
@@ -132,15 +144,23 @@ namespace Youtube_Stream_Record
 
         public static async Task<IList<Video>> GetSnippetDataByVideoIdAsync(IEnumerable<string> videoId)
         {
-            List<Video> videos = new List<Video>();
+            var pBreaker = Policy<VideoListResponse>
+               .Handle<Exception>()
+               .WaitAndRetryAsync(new TimeSpan[]
+               {
+                    TimeSpan.FromSeconds(1),
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromSeconds(4)
+               });
 
+            List<Video> videos = new List<Video>();
             for (int i = 0; i < videoId.Count(); i += 50)
             {
                 try
                 {
                     var video = YouTube.Videos.List("snippet");
                     video.Id = string.Join(',', videoId.Skip(i).Take(50));
-                    var response = await video.ExecuteAsync().ConfigureAwait(false);
+                    var response = await pBreaker.ExecuteAsync(() => video.ExecuteAsync());
                     if (!response.Items.Any())
                         continue;
 
