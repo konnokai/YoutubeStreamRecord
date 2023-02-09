@@ -115,21 +115,12 @@ namespace Youtube_Stream_Record
 
         public static async Task<VideoSnippet> GetSnippetDataByVideoIdAsync(string videoId)
         {
-            var pBreaker = Policy<VideoListResponse>
-               .Handle<Exception>()
-               .WaitAndRetryAsync(new TimeSpan[]
-               {
-                    TimeSpan.FromSeconds(1),
-                    TimeSpan.FromSeconds(2),
-                    TimeSpan.FromSeconds(4)
-               });
-
             try
             {
                 var video = YouTube.Videos.List("snippet");
                 video.Id = videoId;
 
-                var response = await pBreaker.ExecuteAsync(() => video.ExecuteAsync());
+                var response = await video.ExecuteAsync();
                 if (!response.Items.Any())
                     return null;
 
@@ -138,7 +129,7 @@ namespace Youtube_Stream_Record
             catch (Exception ex)
             {
                 Log.Error(ex, "GetSnippetDataByVideoIdAsync-Singel");
-                return null;
+                throw;
             }
         }
 

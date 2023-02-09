@@ -1,5 +1,6 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
+using Google.Apis.YouTube.v3.Data;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -64,7 +65,23 @@ namespace Youtube_Stream_Record
             sub.Subscribe("youtube.record", async (redisChannel, videoId) =>
             {
                 Log.Info($"已接收錄影請求: {videoId}");
-                var snippetData = await Utility.GetSnippetDataByVideoIdAsync(videoId);
+
+                bool isError = false; VideoSnippet snippetData = null;
+                do
+                {
+                    try
+                    {
+                        snippetData = await Utility.GetSnippetDataByVideoIdAsync(videoId);
+                        isError = false;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, $"youtube.record: {videoId}");
+                        isError = true;
+                        await Task.Delay(1000);
+                    }
+                } while (isError);
+
                 if (snippetData == null)
                 {
                     Log.Warn($"{videoId} 無直播資料，可能已被移除");

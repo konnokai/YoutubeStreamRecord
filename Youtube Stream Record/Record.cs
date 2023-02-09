@@ -22,7 +22,7 @@ namespace Youtube_Stream_Record
 
         public static async Task<ResultType> StartRecord(string id, string argOutputPath, string argTempPath, string argUnArchivedOutputPath, uint startStreamLoopTime, uint checkNextStreamTime, bool isLoop = false, bool argIsDisableRedis = false, bool isDisableLiveFromStart = false)
         {
-            string channelId, channelTitle;
+            string channelId = "", channelTitle = "";
             id = id.Replace("@", "-");
             isDisableRedis = argIsDisableRedis;
 
@@ -46,15 +46,29 @@ namespace Youtube_Stream_Record
             {
                 videoId = id;
 
-                var result = await Utility.GetSnippetDataByVideoIdAsync(videoId);
-                channelId = result.ChannelId;
-                channelTitle = result.ChannelTitle;
-
-                if (channelId == "")
+                bool isError = false;
+                do
                 {
-                    Log.Error($"{videoId} 不存在直播");
-                    return ResultType.Error;
-                }
+                    try
+                    {
+                        var result = await Utility.GetSnippetDataByVideoIdAsync(videoId);
+                        if (result == null)
+                        {
+                            Log.Error($"{videoId} 不存在直播");
+                            return ResultType.Error;
+                        }
+
+                        channelId = result.ChannelId;
+                        channelTitle = result.ChannelTitle;
+                        isError = false;
+                    }
+                    catch (HttpRequestException httpEx)
+                    {
+                        Log.Error(httpEx, "GetSnippetDataByVideoIdAsync");
+                        isError = true;
+                        await Task.Delay(1000);
+                    }
+                } while (isError);
             }
             else
             {
