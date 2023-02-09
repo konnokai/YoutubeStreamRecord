@@ -74,13 +74,6 @@ namespace Youtube_Stream_Record
                 videoId = videoId.ToString().Replace("-", "@");
                 Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
 
-                string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                    $"once {videoId} " +
-                    $"-o \"{outputPath}\" " +
-                    $"-t \"{tempPath}\" " +
-                    $"-u \"{unarchivedOutputPath}\"" +
-                    (isDisableLiveFromStart ? " --disable-live-from-start" : "");
-
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                 {
                     if (Utility.InDocker && dockerClient != null)
@@ -160,6 +153,12 @@ namespace Youtube_Stream_Record
                     }
                     else if (!Utility.InDocker)
                     {
+                        string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
+                            $"once {videoId} " +
+                            $"-o \"{outputPath}\" " +
+                            $"-t \"{tempPath}\" " +
+                            $"-u \"{unarchivedOutputPath}\"" +
+                            (isDisableLiveFromStart ? " --disable-live-from-start" : "");
                         Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
                     }
                     else
@@ -167,13 +166,23 @@ namespace Youtube_Stream_Record
                         Log.Error("在Docker環境內但無法建立新的容器來錄影，請確認環境是否正常");
                     }
                 }
-                else Process.Start(new ProcessStartInfo()
+                else
                 {
-                    FileName = "dotnet",
-                    Arguments = procArgs.Replace("dotnet ", ""),
-                    CreateNoWindow = false,
-                    UseShellExecute = true
-                });
+                    string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
+                        $"once {videoId} " +
+                        $"-o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
+                        $"-t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
+                        $"-u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        (isDisableLiveFromStart ? " --disable-live-from-start" : "");
+
+                    Process.Start(new ProcessStartInfo()
+                    {
+                        FileName = "dotnet",
+                        Arguments = procArgs.Replace("dotnet ", ""),
+                        CreateNoWindow = false,
+                        UseShellExecute = true
+                    });
+                }
             });
 
             sub.Subscribe("youtube.test", (channel, nope) =>
@@ -193,37 +202,40 @@ namespace Youtube_Stream_Record
 
             sub.Subscribe("youtube.endstream", async (channel, videoId) =>
             {
-                await Task.Delay(5000); // 等待五秒鐘確保容器已關閉後再清理
-
-                var parms = new ContainersPruneParameters()
+                if (Utility.InDocker && dockerClient != null)
                 {
-                    // https://github.com/dotnet/Docker.DotNet/issues/489
-                    // 媽的微軟連summary都不寫是三小==
-                    Filters = new Dictionary<string, IDictionary<string, bool>>
+                    await Task.Delay(5000); // 等待五秒鐘確保容器已關閉後再清理
+
+                    var parms = new ContainersPruneParameters()
                     {
-                        ["label"] = new Dictionary<string, bool>
+                        // https://github.com/dotnet/Docker.DotNet/issues/489
+                        // 媽的微軟連summary都不寫是三小==
+                        Filters = new Dictionary<string, IDictionary<string, bool>>
                         {
-                            [$"me.konnokai.record.video.id={videoId}"] = true,
+                            ["label"] = new Dictionary<string, bool>
+                            {
+                                [$"me.konnokai.record.video.id={videoId}"] = true,
+                            }
+                        }
+                    };
+
+                    try
+                    {
+                        var containersPruneResponse = await dockerClient.Containers.PruneContainersAsync(parms);
+                        if (containersPruneResponse != null && containersPruneResponse.ContainersDeleted != null && containersPruneResponse.ContainersDeleted.Any())
+                        {
+                            Log.Info($"已清除容器: {videoId}");
+                            Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
+                        }
+                        else
+                        {
+                            Log.Warn($"清除容器失敗-{videoId}: API未回傳容器Id");
                         }
                     }
-                };
-
-                try
-                {
-                    var containersPruneResponse = await dockerClient.Containers.PruneContainersAsync(parms);
-                    if (containersPruneResponse != null && containersPruneResponse.ContainersDeleted != null && containersPruneResponse.ContainersDeleted.Any())
+                    catch (Exception ex)
                     {
-                        Log.Info($"已清除容器: {videoId}");
-                        Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
+                        Log.Error(ex, $"清除容器失敗-{videoId}");
                     }
-                    else
-                    {
-                        Log.Warn($"清除容器失敗-{videoId}: API未回傳容器Id");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, $"清除容器失敗-{videoId}");
                 }
             });
 
@@ -295,6 +307,8 @@ namespace Youtube_Stream_Record
             // 檢測昨天的直播是否有被私人但沒被移動到私人存檔保存區
             autoCheckIsLiveUnArchivedTimer = new Timer(async (obj) =>
             {
+                Log.Info("開始檢測昨天的私人存檔");
+
                 try
                 {
                     var list = Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly);
