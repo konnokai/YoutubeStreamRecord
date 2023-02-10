@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -275,7 +276,7 @@ namespace Youtube_Stream_Record
 
                                     if (!isDisableRedis)
                                     {
-                                        Utility.Redis.GetSubscriber().Publish("youtube.startstream", videoId);
+                                        Utility.Redis.GetSubscriber().Publish("youtube.startstream", $"{videoId}:0");
                                         Utility.Redis.GetDatabase().SetAdd("youtube.nowRecord", videoId);
 
                                         if (isDisableLiveFromStart)
@@ -302,6 +303,7 @@ namespace Youtube_Stream_Record
                                 if (e.Data.Contains("members-only content"))
                                 {
                                     Log.Error("檢測到無法讀取的會限");
+                                    Utility.Redis.GetSubscriber().Publish("youtube.startstream", $"{videoId}:1");
                                     process.Kill(Signum.SIGQUIT);
                                     isCanNotRecordStream = true;
                                 }
