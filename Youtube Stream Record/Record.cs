@@ -260,7 +260,7 @@ namespace Youtube_Stream_Record
                             process.Kill(Signum.SIGQUIT);
                             isCanNotRecordStream = true;
                         }
-                        else if (e.Data.Contains("video has been removed"))
+                        else if (e.Data.Contains("video has been removed") || e.Data.Contains("removed by the uploader"))
                         {
                             Log.Error("已移除，取消錄影");
                             process.Kill(Signum.SIGQUIT);
