@@ -10,7 +10,7 @@ namespace Youtube_Stream_Record
     {
         public static string VERSION => GetLinkerTime(Assembly.GetEntryAssembly());
         public enum Status { Ready, Deleted, IsClose, IsChatRoom, IsChangeTime };
-        public enum ResultType { Loop, Once, Sub, Error, None }
+        public enum ResultType { Once, Sub, Error, None }
 
         static void Main(string[] args)
         {
@@ -33,10 +33,9 @@ namespace Youtube_Stream_Record
                 ApiKey = Utility.BotConfig.GoogleApiKey,
             });
 
-            var result = Parser.Default.ParseArguments<LoopOptions, OnceOptions, SubOptions>(args)
+            var result = Parser.Default.ParseArguments<OnceOptions, SubOptions>(args)
                 .MapResult(
-                (LoopOptions lo) => Record.StartRecord(lo.ChannelId, lo.OutputPath, lo.TempPath, lo.UnarchivedOutputPath, lo.StartStreamLoopTime, lo.CheckNextStreamTime, true, lo.DisableRedis, lo.DisableLiveFromStart).Result,
-                (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime, false, oo.DisableRedis, oo.DisableLiveFromStart).Result,
+                (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime, oo.DisableRedis, oo.DisableLiveFromStart, oo.DontSendStartMessage).Result,
                 (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.AutoDeleteArchived, so.DisableLiveFromStart).Result,
                 Error => ResultType.None);
 
@@ -87,7 +86,8 @@ namespace Youtube_Stream_Record
             public bool DisableLiveFromStart { get; set; } = false;
         }
 
-        public class RecordOptions : RequiredOptions
+        [Verb("once", HelpText = "單次錄影")]
+        public class OnceOptions : RequiredOptions
         {
             [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
             public string ChannelId { get; set; }
@@ -100,13 +100,10 @@ namespace Youtube_Stream_Record
 
             [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
             public bool DisableRedis { get; set; } = false;
+
+            [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
+            public bool DontSendStartMessage { get; set; } = false;
         }
-
-        [Verb("loop", HelpText = "重複錄影")]
-        public class LoopOptions : RecordOptions { }
-
-        [Verb("once", HelpText = "單次錄影")]
-        public class OnceOptions : RecordOptions { }
 
         [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
         public class SubOptions : RequiredOptions
