@@ -35,7 +35,7 @@ namespace Youtube_Stream_Record
 
             var result = Parser.Default.ParseArguments<OnceOptions, SubOptions>(args)
                 .MapResult(
-                (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.StartStreamLoopTime, oo.CheckNextStreamTime, oo.DisableRedis, oo.DisableLiveFromStart, oo.DontSendStartMessage).Result,
+                (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.DisableRedis, oo.DisableLiveFromStart, oo.DontSendStartMessage).Result,
                 (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.AutoDeleteArchived, so.DisableLiveFromStart).Result,
                 Error => ResultType.None);
 
@@ -91,12 +91,6 @@ namespace Youtube_Stream_Record
         {
             [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
             public string ChannelId { get; set; }
-
-            [Value(1, Required = false, HelpText = "檢測開台的間隔")]
-            public uint StartStreamLoopTime { get; set; } = 30;
-
-            [Value(2, Required = false, HelpText = "檢測下個直播的間隔")]
-            public uint CheckNextStreamTime { get; set; } = 600;
 
             [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
             public bool DisableRedis { get; set; } = false;

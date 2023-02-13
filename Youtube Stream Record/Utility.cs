@@ -113,18 +113,18 @@ namespace Youtube_Stream_Record
             }
         }
 
-        public static async Task<VideoSnippet> GetSnippetDataByVideoIdAsync(string videoId)
+        public static async Task<(VideoSnippet VideoSnippet, VideoLiveStreamingDetails VideoLiveStreamingDetails)> GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync(string videoId)
         {
             try
             {
-                var video = YouTube.Videos.List("snippet");
+                var video = YouTube.Videos.List("snippet,liveStreamingDetails");
                 video.Id = videoId;
 
                 var response = await video.ExecuteAsync();
                 if (!response.Items.Any())
-                    return null;
+                    return (null, null);
 
-                return response.Items[0].Snippet;
+                return (response.Items[0].Snippet, response.Items[0].LiveStreamingDetails);
             }
             catch (Exception ex)
             {
@@ -264,7 +264,10 @@ namespace Youtube_Stream_Record
 
         public static void Kill(this Process process, Signum sig)
         {
-            sys_kill(process.Id, (int)sig);
+            if (OperatingSystem.IsWindows())
+                process.Kill();
+            else
+                sys_kill(process.Id, (int)sig);
         }
     }
 

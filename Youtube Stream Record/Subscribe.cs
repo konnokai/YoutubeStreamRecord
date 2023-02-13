@@ -71,7 +71,7 @@ namespace Youtube_Stream_Record
                 {
                     try
                     {
-                        snippetData = await Utility.GetSnippetDataByVideoIdAsync(videoId);
+                        snippetData = (await Utility.GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync(videoId)).VideoSnippet;
                         isError = false;
                     }
                     catch (Exception ex)
@@ -140,7 +140,7 @@ namespace Youtube_Stream_Record
                 {
                     try
                     {
-                        snippetData = await Utility.GetSnippetDataByVideoIdAsync(videoId);
+                        snippetData = (await Utility.GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync(videoId)).VideoSnippet;
                         isError = false;
                     }
                     catch (Exception ex)
