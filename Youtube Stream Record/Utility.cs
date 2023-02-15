@@ -246,6 +246,11 @@ namespace Youtube_Stream_Record
                 Log.Warn($"已關閉留言");
                 return false;
             }
+            catch (Exception ex) when (ex.Message.ToLower().Contains("notfound"))
+            {
+                IsDelLive = true;
+                return false;
+            }
             catch (Exception ex)
             {
                 Log.Warn($"無法檢測是否為會限影片: {videoId}");

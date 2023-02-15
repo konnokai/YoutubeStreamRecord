@@ -296,16 +296,16 @@ namespace Youtube_Stream_Record
             #region 直播結束後的保存處理
             if (!isCanNotRecordStream) // 如果該直播沒被判定成不能錄影的會限直播的話
             {
-                if (!string.IsNullOrEmpty(fileName) && Utility.IsDelLive) // 如果被刪檔就保存到unarchivedOutputPath
-                {
-                    Log.Info($"已刪檔直播，移動資料");
-                    MoveVideo(unarchivedOutputPath, "youtube.unarchived");
-                }
-                else if (!string.IsNullOrEmpty(fileName) && Utility.IsMemberOnly(videoId)) // 如果是會限直播也保存到unarchivedOutputPath
+                if (!string.IsNullOrEmpty(fileName) && Utility.IsMemberOnly(videoId)) // 如果是會限直播也保存到unarchivedOutputPath
                 {
                     Log.Info($"已轉會限影片，移動資料");
                     MoveVideo(unarchivedOutputPath, "youtube.memberonly");
                 }
+                else if (!string.IsNullOrEmpty(fileName) && Utility.IsDelLive) // 如果被刪檔就保存到unarchivedOutputPath
+                {
+                    Log.Info($"已刪檔直播，移動資料");
+                    MoveVideo(unarchivedOutputPath, "youtube.unarchived");
+                }                
                 else if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath)) // 否則就保存到outputPath
                 {
                     Log.Info("將直播轉移至保存點");
