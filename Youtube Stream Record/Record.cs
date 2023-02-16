@@ -211,12 +211,12 @@ namespace Youtube_Stream_Record
 
                         Console.WriteLine(e.Data);
 
-                        if (isReceiveDownload)
-                            return;
-
                         // 應該能用這個來判定開始直播
                         if (e.Data.ToLower().StartsWith("[download]"))
                         {
+                            if (isReceiveDownload)
+                                return;
+
                             isReceiveDownload = true;
                             Log.Info("開始直播!");
 
