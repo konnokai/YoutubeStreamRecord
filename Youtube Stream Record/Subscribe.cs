@@ -305,6 +305,7 @@ namespace Youtube_Stream_Record
             Log.Info("已訂閱Redis頻道");
 
             Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");
+            Regex fileNameRegex = new Regex(@"youtube_(?'ChannelId'[\w\-\\_]{24})_(?'Date'\d{8})_(?'Time'\d{6})_(?'VideoId'[\w\-\\_]{11})\.(?'Ext'[\w]{2,4})");
 
             #region 自動刪除2天後的暫存存檔
             if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath))
@@ -368,19 +369,14 @@ namespace Youtube_Stream_Record
             // 檢測昨天的直播是否有被私人但沒被移動到私人存檔保存區
             autoCheckIsLiveUnArchivedTimer = new Timer(async (obj) =>
             {
-                Log.Info("開始檢測昨天的私人存檔");
+                Log.Info("開始檢測私人存檔");
 
                 try
                 {
-                    var list = Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly);
-                    string dirName = DateTime.Now.AddDays(-1).ToString("yyyyMMdd");
+                    List<string> videoIdList = new List<string>();
 
-                    if (list.Any((x) => x.EndsWith(dirName)))
+                    foreach (var dirName in Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly))
                     {
-                        dirName = list.Single((x) => x.EndsWith(dirName));
-                        Regex fileNameRegex = new Regex(@"youtube_(?'ChannelId'[\w\-\\_]{24})_(?'Date'\d{8})_(?'Time'\d{6})_(?'VideoId'[\w\-\\_]{11})\.(?'Ext'[\w]{2,4})");
-                        List<string> videoIdList = new List<string>();
-
                         foreach (var item in Directory.GetFiles(dirName))
                         {
                             var regexResult = fileNameRegex.Match(item);
@@ -418,17 +414,13 @@ namespace Youtube_Stream_Record
                             }
                         }
                     }
-                    else
-                    {
-                        Log.Warn($"{dirName} 不存在，略過私人影片檢測");
-                    }
                 }
                 catch (Exception ex)
                 {
                     Log.Error(ex, "autoCheckIsLiveUnArchivedTimer");
                 }
             }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
-            Log.Warn("已開啟自動檢測昨天的私人存檔");
+            Log.Warn("已開啟自動檢測保存目錄內的私人存檔");
             #endregion
 
             if (isDisableLiveFromStart)
