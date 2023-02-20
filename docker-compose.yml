@@ -1,8 +1,7 @@
 version: "3.9"
 services:
   youtube-record:
-    build: .
-    image: youtube-record:latest
+    image: jun112561/youtube-record:master
     tty: true
     stdin_open: true
     volumes:
