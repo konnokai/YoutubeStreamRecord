@@ -18,6 +18,8 @@ namespace Youtube_Stream_Record
     {
         static Timer autoDeleteArchivedTimer, autoDeleteTempRecordTimer, autoCheckIsLiveUnArchivedTimer;
         static DockerClient dockerClient = null;
+        static string NetworkId = "";
+
         public static async Task<ResultType> SubRecord(string outputPath, string tempPath, string unarchivedOutputPath, bool autoDeleteArchived, bool isDisableLiveFromStart = false)
         {
             try
@@ -53,11 +55,53 @@ namespace Youtube_Stream_Record
                     dockerClient = new DockerClientConfiguration(new Uri("unix:///var/run/docker.sock")).CreateClient();
                     await dockerClient.System.PingAsync();
                     Log.Info("成功連線到docker.sock!");
+
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("在Docker環境但無法連接到docker.sock，請確認Volume綁定是否正確");
-                    Log.Error(ex.ToString());
+                    Log.Error(ex, "在Docker環境但無法連接到docker.sock，請確認Volume綁定是否正確");
+                    return ResultType.Error;
+                }
+
+                try
+                {
+                    var networks = await dockerClient.Networks.ListNetworksAsync();
+                    var network = networks.FirstOrDefault((x) => x.Name.EndsWith("youtube-record"));
+                    if (network != null)
+                    {
+                        NetworkId = network.ID;
+                    }
+                    else
+                    {
+                        Log.Error("找不到\"youtube-record\"對應的Docker網路，嘗試自動建立...");
+                        // 不知道是否能建立成功，而且原則上network應該要是存在的
+                        // 因為用compose架的話network一定要存在才能把container打開
+                        var createdNetwork = await dockerClient.Networks.CreateNetworkAsync(new NetworksCreateParameters
+                        {
+                            Name = "youtube-record",
+                            Attachable = true,
+                            IPAM = new IPAM()
+                            {
+                                Driver = "default",
+                                Config = new List<IPAMConfig>()
+                                {
+                                    new IPAMConfig()
+                                    {
+                                        Subnet = "172.28.0.0/16",
+                                        Gateway= "172.28.0.1"
+                                    }
+                                }
+                            }
+                        });
+
+                        NetworkId = createdNetwork.ID;
+                    }
+
+                    Log.Info($"Network Id: {NetworkId}");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "取得Network Id失敗");
                     return ResultType.Error;
                 }
             }
@@ -428,6 +472,14 @@ namespace Youtube_Stream_Record
                 { "me.konnokai.record.channel.id", snippetData.ChannelId }
             };
 
+            parms.NetworkingConfig = new NetworkingConfig()
+            {
+                EndpointsConfig = new Dictionary<string, EndpointSettings>()
+                {
+                    { "" , new EndpointSettings() { NetworkID = NetworkId } }
+                }
+            };
+
             // 在Docker環境內的話則直接指定預設路徑
             parms.Entrypoint = new List<string>
             {
@@ -448,6 +500,7 @@ namespace Youtube_Stream_Record
             // 不要讓程式自己Attach以免Log混亂
             parms.AttachStdout = false;
             parms.AttachStdin = false;
+            parms.AttachStderr = false;
 
             // 允許另外透過其他方法Attach進去交互
             parms.OpenStdin = true;
@@ -472,7 +525,7 @@ namespace Youtube_Stream_Record
             }
             catch (Exception ex)
             {
-                Log.Error($"建立容器 {parms.Name} 錯誤: {ex}");
+                Log.Error(ex, $"建立容器 {parms.Name} 錯誤");
             }
         }
     }
