@@ -373,10 +373,16 @@ namespace Youtube_Stream_Record
 
                 try
                 {
-                    List<string> videoIdList = new List<string>();
-
                     foreach (var dirName in Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly))
                     {
+                        if (!Directory.Exists(dirName))
+                        {
+                            Log.Warn($"{dirName} 不存在，略過");
+                            continue;
+                        }
+
+                        List<string> videoIdList = new List<string>();
+
                         foreach (var item in Directory.GetFiles(dirName))
                         {
                             var regexResult = fileNameRegex.Match(item);
