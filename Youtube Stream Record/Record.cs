@@ -305,11 +305,15 @@ namespace Youtube_Stream_Record
                 {
                     Log.Info($"已刪檔直播，移動資料");
                     MoveVideo(unarchivedOutputPath, "youtube.unarchived");
-                }                
+                }
                 else if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath)) // 否則就保存到outputPath
                 {
                     Log.Info("將直播轉移至保存點");
                     MoveVideo(outputPath, "youtube.endstream");
+
+                    // https://social.msdn.microsoft.com/Forums/en-US/c2c12a9f-dc4c-4c9a-b652-65374ef999d8/get-docker-container-id-in-code?forum=aspdotnetcore
+                    if (Utility.InDocker)
+                        Utility.Redis.GetSubscriber().Publish("youtube.removeById", Environment.MachineName);
                 }
             }
             else

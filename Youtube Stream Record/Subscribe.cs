@@ -261,41 +261,20 @@ namespace Youtube_Stream_Record
                 Log.Warn($"已轉會限直播: {videoId}");
             });
 
-            sub.Subscribe("youtube.endstream", async (channel, videoId) =>
+            sub.Subscribe("youtube.removeById", async (channel, containerId) =>
             {
                 if (Utility.InDocker && dockerClient != null)
                 {
                     await Task.Delay(5000); // 等待五秒鐘確保容器已關閉後再清理
 
-                    var parms = new ContainersPruneParameters()
-                    {
-                        // https://github.com/dotnet/Docker.DotNet/issues/489
-                        // 媽的微軟連summary都不寫是三小==
-                        Filters = new Dictionary<string, IDictionary<string, bool>>
-                        {
-                            ["label"] = new Dictionary<string, bool>
-                            {
-                                [$"me.konnokai.record.video.id={videoId}"] = true,
-                            }
-                        }
-                    };
-
                     try
                     {
-                        var containersPruneResponse = await dockerClient.Containers.PruneContainersAsync(parms);
-                        if (containersPruneResponse != null && containersPruneResponse.ContainersDeleted != null && containersPruneResponse.ContainersDeleted.Any())
-                        {
-                            Log.Info($"已清除容器: {videoId}");
-                            Log.Info($"容器Id: {string.Join(", ", containersPruneResponse.ContainersDeleted)}");
-                        }
-                        else
-                        {
-                            Log.Warn($"清除容器失敗-{videoId}: API未回傳容器Id");
-                        }
+                        await dockerClient.Containers.RemoveContainerAsync(containerId.ToString(), new ContainerRemoveParameters());
+                        Log.Info($"已清除容器: {containerId}");
                     }
                     catch (Exception ex)
                     {
-                        Log.Error(ex, $"清除容器失敗-{videoId}");
+                        Log.Error(ex, $"移除容器失敗-{containerId}");
                     }
                 }
             });
