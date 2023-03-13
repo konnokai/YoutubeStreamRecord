@@ -265,7 +265,7 @@ namespace Youtube_Stream_Record
             {
                 if (Utility.InDocker && dockerClient != null)
                 {
-                    await Task.Delay(10000); // 等待五秒鐘確保容器已關閉後再清理
+                    await Task.Delay(10000); // 等待10秒鐘確保容器已關閉後再清理
 
                     try
                     {
