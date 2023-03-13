@@ -211,7 +211,43 @@ namespace Youtube_Stream_Record
                         if (e.Data.ToLower().StartsWith("[wait]"))
                             return;
 
-                        Console.WriteLine(e.Data);
+                        Log.Error(e.Data);
+
+                        if (e.Data.Contains("members-only content"))
+                        {
+                            Log.Error("檢測到無法讀取的會限");
+                            Utility.Redis.GetSubscriber().Publish("youtube.startstream", $"{videoId}:1");
+                            process.Kill(Signum.SIGQUIT);
+                            isCanNotRecordStream = true;
+                        }
+                        else if (e.Data.Contains("video is private") || e.Data.Contains("Private video"))
+                        {
+                            Log.Error("已私人化，取消錄影");
+                            process.Kill(Signum.SIGQUIT);
+                            isCanNotRecordStream = true;
+                        }
+                        else if (e.Data.Contains("video has been removed") || e.Data.Contains("removed by the uploader"))
+                        {
+                            Log.Error("已移除，取消錄影");
+                            process.Kill(Signum.SIGQUIT);
+                            isCanNotRecordStream = true;
+                        }
+                    }
+                    catch { }
+                };
+
+                process.OutputDataReceived += (sender, e) =>
+                {
+                    try
+                    {
+                        if (string.IsNullOrEmpty(e.Data))
+                            return;
+
+                        // 不顯示wait開頭的訊息避免吃爆Portainer的log
+                        if (e.Data.ToLower().StartsWith("[wait]"))
+                            return;
+
+                        Log.YouTubeInfo(e.Data);
 
                         // 應該能用這個來判定開始直播
                         if (e.Data.ToLower().StartsWith("[download]"))
@@ -247,26 +283,6 @@ namespace Youtube_Stream_Record
                                 }
                             }
                         }
-
-                        if (e.Data.Contains("members-only content"))
-                        {
-                            Log.Error("檢測到無法讀取的會限");
-                            Utility.Redis.GetSubscriber().Publish("youtube.startstream", $"{videoId}:1");
-                            process.Kill(Signum.SIGQUIT);
-                            isCanNotRecordStream = true;
-                        }
-                        else if (e.Data.Contains("video is private") || e.Data.Contains("Private video"))
-                        {
-                            Log.Error("已私人化，取消錄影");
-                            process.Kill(Signum.SIGQUIT);
-                            isCanNotRecordStream = true;
-                        }
-                        else if (e.Data.Contains("video has been removed") || e.Data.Contains("removed by the uploader"))
-                        {
-                            Log.Error("已移除，取消錄影");
-                            process.Kill(Signum.SIGQUIT);
-                            isCanNotRecordStream = true;
-                        }
                     }
                     catch { }
                 };
@@ -275,8 +291,11 @@ namespace Youtube_Stream_Record
 
                 process.Start();
                 process.BeginErrorReadLine();
+                process.BeginOutputReadLine();
+
                 process.WaitForExit();
                 process.CancelErrorRead();
+                process.CancelOutputRead();
 
                 Utility.IsClose = true;
                 Log.Info($"錄影結束");

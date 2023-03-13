@@ -7,6 +7,14 @@ public static class Log
 
     enum LogType { Verb, Stream, Info, Warn, Error }
 
+    public static void YouTubeInfo(string text, bool newLine = true)
+    {
+        lock (_lock)
+        {
+            FormatColorWrite(text, ConsoleColor.White, newLine);
+        }
+    }
+
     public static void Info(string text, bool newLine = true)
     {
         lock (_lock)
@@ -23,14 +31,6 @@ public static class Log
         }
     }
 
-    public static void Error(string text, bool newLine = true)
-    {
-        lock (_lock)
-        {
-            FormatColorWrite(text, ConsoleColor.DarkRed, newLine);
-        }
-    }
-
     public static void Debug(string text, bool newLine = true)
     {
         if (!Debugger.IsAttached)
@@ -39,6 +39,14 @@ public static class Log
         lock (_lock)
         {
             FormatColorWrite(text, ConsoleColor.Cyan, newLine);
+        }
+    }
+
+    public static void Error(string text, bool newLine = true)
+    {
+        lock (_lock)
+        {
+            FormatColorWrite(text, ConsoleColor.DarkRed, newLine);
         }
     }
 
