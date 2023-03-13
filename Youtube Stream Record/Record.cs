@@ -197,8 +197,10 @@ namespace Youtube_Stream_Record
                 // --live-from-start 太吃硬碟隨機讀寫
                 // --embed-metadata --embed-thumbnail 會導致不定時卡住，先移除
                 process.StartInfo.Arguments = $"https://www.youtube.com/watch?v={videoId} -o \"{tempPath}{fileName}.%(ext)s\" --wait-for-video 15 --mark-watched {arguments}";
-                process.StartInfo.RedirectStandardOutput = true;
-                process.OutputDataReceived += (sender, e) =>
+
+                // 印象中之前用ErrorDataReceived的時候能正常觸發會限訊息檢測
+                process.StartInfo.RedirectStandardError = true;
+                process.ErrorDataReceived += (sender, e) =>
                 {
                     try
                     {
@@ -272,9 +274,9 @@ namespace Youtube_Stream_Record
                 Log.Info(process.StartInfo.Arguments);
 
                 process.Start();
-                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
                 process.WaitForExit();
-                process.CancelOutputRead();
+                process.CancelErrorRead();
 
                 Utility.IsClose = true;
                 Log.Info($"錄影結束");
