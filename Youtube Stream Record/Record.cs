@@ -200,6 +200,7 @@ namespace Youtube_Stream_Record
 
                 // 印象中之前用ErrorDataReceived的時候能正常觸發會限訊息檢測
                 process.StartInfo.RedirectStandardError = true;
+                process.StartInfo.RedirectStandardOutput = true;
                 process.ErrorDataReceived += (sender, e) =>
                 {
                     try
