@@ -145,11 +145,11 @@ namespace Youtube_Stream_Record
                     else if (!Utility.InDocker)
                     {
                         string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                            $"once {videoId} " +
-                            $"-o \"{outputPath}\" " +
-                            $"-t \"{tempPath}\" " +
-                            $"-u \"{unarchivedOutputPath}\"" +
-                            $"-m \"{memberOnlyOutputPath}\"" +
+                            $"once {videoId}" +
+                            $" -o \"{outputPath}\"" +
+                            $" -t \"{tempPath}\"" +
+                            $" -u \"{unarchivedOutputPath}\"" +
+                            $" -m \"{memberOnlyOutputPath}\"" +
                             (isDisableLiveFromStart ? " --disable-live-from-start" : "");
                         Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
                     }
@@ -161,11 +161,11 @@ namespace Youtube_Stream_Record
                 else
                 {
                     string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                        $"once {videoId} " +
-                        $"-o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
-                        $"-t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
-                        $"-u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $"-m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $"once {videoId}" +
+                        $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $" -u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $" -m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         (isDisableLiveFromStart ? " --disable-live-from-start" : "");
 
                     Process.Start(new ProcessStartInfo()
@@ -216,11 +216,11 @@ namespace Youtube_Stream_Record
                     else if (!Utility.InDocker)
                     {
                         string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                            $"once {videoId} " +
-                            $"-o \"{outputPath}\" " +
-                            $"-t \"{tempPath}\" " +
-                            $"-u \"{unarchivedOutputPath}\"" +
-                            $"-m \"{memberOnlyOutputPath}\"" +
+                            $"once {videoId}" +
+                            $" -o \"{outputPath}\"" +
+                            $" -t \"{tempPath}\"" +
+                            $" -u \"{unarchivedOutputPath}\"" +
+                            $" -m \"{memberOnlyOutputPath}\"" +
                             (isDisableLiveFromStart ? " --disable-live-from-start" : "") +
                             " --dont-send-start-message";
                         Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
@@ -233,11 +233,11 @@ namespace Youtube_Stream_Record
                 else
                 {
                     string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                        $"once {videoId} " +
-                        $"-o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
-                        $"-t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
-                        $"-u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $"-m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $"once {videoId}" +
+                        $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $" -u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $" -m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         (isDisableLiveFromStart ? " --disable-live-from-start" : "" +
                         " --dont-send-start-message");
 
