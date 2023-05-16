@@ -144,8 +144,8 @@ namespace Youtube_Stream_Record
                     }
                     else if (!Utility.InDocker)
                     {
-                        string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                            $"once {videoId}" +
+                        string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                            $" once {videoId}" +
                             $" -o \"{outputPath}\"" +
                             $" -t \"{tempPath}\"" +
                             $" -u \"{unarchivedOutputPath}\"" +
@@ -160,8 +160,8 @@ namespace Youtube_Stream_Record
                 }
                 else
                 {
-                    string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                        $"once {videoId}" +
+                    string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                        $" once {videoId}" +
                         $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         $" -u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
@@ -215,8 +215,8 @@ namespace Youtube_Stream_Record
                     }
                     else if (!Utility.InDocker)
                     {
-                        string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                            $"once {videoId}" +
+                        string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                            $" once {videoId}" +
                             $" -o \"{outputPath}\"" +
                             $" -t \"{tempPath}\"" +
                             $" -u \"{unarchivedOutputPath}\"" +
@@ -232,8 +232,8 @@ namespace Youtube_Stream_Record
                 }
                 else
                 {
-                    string procArgs = $"dotnet \"Youtube Stream Record.dll\" " +
-                        $"once {videoId}" +
+                    string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                        $" once {videoId}" +
                         $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         $" -u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
