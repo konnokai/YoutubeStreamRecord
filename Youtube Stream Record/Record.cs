@@ -15,6 +15,7 @@ namespace Youtube_Stream_Record
         static string tempPath;
         static string outputPath;
         static string unarchivedOutputPath;
+        static string memberOnlyOutputPath;
         static bool isDisableRedis;
         static DateTime streamScheduledStartTime = DateTime.MinValue;
 
@@ -22,6 +23,7 @@ namespace Youtube_Stream_Record
             string argOutputPath,
             string argTempPath,
             string argUnArchivedOutputPath,
+            string argMemberOnlyOutputPath,
             bool argIsDisableRedis = false,
             bool isDisableLiveFromStart = false,
             bool dontSendStartMessage = false)
@@ -103,13 +105,17 @@ namespace Youtube_Stream_Record
                 argTempPath += Utility.GetEnvSlash();
             if (!argUnArchivedOutputPath.EndsWith(Utility.GetEnvSlash()))
                 argUnArchivedOutputPath += Utility.GetEnvSlash();
+            if (!argMemberOnlyOutputPath.EndsWith(Utility.GetEnvSlash()))
+                argMemberOnlyOutputPath += Utility.GetEnvSlash();
 
             outputPath = argOutputPath.Replace("\"", "");
             tempPath = argTempPath.Replace("\"", "");
             unarchivedOutputPath = argUnArchivedOutputPath.Replace("\"", "");
+            memberOnlyOutputPath = argMemberOnlyOutputPath.Replace("\"", "");
             Log.Info($"輸出路徑: {outputPath}");
             Log.Info($"暫存路徑: {tempPath}");
             Log.Info($"私人存檔路徑: {unarchivedOutputPath}");
+            Log.Info($"會限存檔路徑: {memberOnlyOutputPath}");
 
             if (isDisableLiveFromStart)
                 Log.Info("不自動從頭開始錄影");
@@ -318,10 +324,10 @@ namespace Youtube_Stream_Record
             #region 直播結束後的保存處理
             if (!isCanNotRecordStream) // 如果該直播沒被判定成不能錄影的會限直播的話
             {
-                if (!string.IsNullOrEmpty(fileName) && Utility.IsMemberOnly(videoId)) // 如果是會限直播也保存到unarchivedOutputPath
+                if (!string.IsNullOrEmpty(fileName) && Utility.IsMemberOnly(videoId)) // 如果是會限直播保存到memberOnlyOutputPath
                 {
                     Log.Info($"已轉會限影片，移動資料");
-                    MoveVideo(unarchivedOutputPath, "youtube.memberonly");
+                    MoveVideo(memberOnlyOutputPath, "youtube.memberonly");
                 }
                 else if (!string.IsNullOrEmpty(fileName) && Utility.IsDelLive) // 如果被刪檔就保存到unarchivedOutputPath
                 {

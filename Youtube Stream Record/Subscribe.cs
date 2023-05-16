@@ -20,7 +20,7 @@ namespace Youtube_Stream_Record
         static DockerClient dockerClient = null;
         static string NetworkId = "";
 
-        public static async Task<ResultType> SubRecord(string outputPath, string tempPath, string unarchivedOutputPath, bool autoDeleteArchived, bool isDisableLiveFromStart = false)
+        public static async Task<ResultType> SubRecord(string outputPath, string tempPath, string unarchivedOutputPath, string memberOnlyOutputPath, bool autoDeleteArchived, bool isDisableLiveFromStart = false)
         {
             try
             {
@@ -36,6 +36,7 @@ namespace Youtube_Stream_Record
 
             if (!outputPath.EndsWith(Utility.GetEnvSlash())) outputPath += Utility.GetEnvSlash();
             if (!unarchivedOutputPath.EndsWith(Utility.GetEnvSlash())) unarchivedOutputPath += Utility.GetEnvSlash();
+            if (!memberOnlyOutputPath.EndsWith(Utility.GetEnvSlash())) memberOnlyOutputPath += Utility.GetEnvSlash();
             var sub = Utility.Redis.GetSubscriber();
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && Utility.InDocker)
@@ -148,6 +149,7 @@ namespace Youtube_Stream_Record
                             $"-o \"{outputPath}\" " +
                             $"-t \"{tempPath}\" " +
                             $"-u \"{unarchivedOutputPath}\"" +
+                            $"-m \"{memberOnlyOutputPath}\"" +
                             (isDisableLiveFromStart ? " --disable-live-from-start" : "");
                         Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
                     }
@@ -163,6 +165,7 @@ namespace Youtube_Stream_Record
                         $"-o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
                         $"-t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
                         $"-u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $"-m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         (isDisableLiveFromStart ? " --disable-live-from-start" : "");
 
                     Process.Start(new ProcessStartInfo()
@@ -217,6 +220,7 @@ namespace Youtube_Stream_Record
                             $"-o \"{outputPath}\" " +
                             $"-t \"{tempPath}\" " +
                             $"-u \"{unarchivedOutputPath}\"" +
+                            $"-m \"{memberOnlyOutputPath}\"" +
                             (isDisableLiveFromStart ? " --disable-live-from-start" : "") +
                             " --dont-send-start-message";
                         Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
@@ -233,6 +237,7 @@ namespace Youtube_Stream_Record
                         $"-o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
                         $"-t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\" " +
                         $"-u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                        $"-m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         (isDisableLiveFromStart ? " --disable-live-from-start" : "" +
                         " --dont-send-start-message");
 
@@ -281,6 +286,7 @@ namespace Youtube_Stream_Record
 
             Log.Info($"訂閱模式，保存路徑: {outputPath}");
             Log.Info($"刪檔直播保存路徑: {unarchivedOutputPath}");
+            Log.Info($"會限直播保存路徑: {memberOnlyOutputPath}");
             Log.Info("已訂閱Redis頻道");
 
             Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");

@@ -35,8 +35,8 @@ namespace Youtube_Stream_Record
 
             var result = Parser.Default.ParseArguments<OnceOptions, SubOptions>(args)
                 .MapResult(
-                (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.DisableRedis, oo.DisableLiveFromStart, oo.DontSendStartMessage).Result,
-                (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.AutoDeleteArchived, so.DisableLiveFromStart).Result,
+                (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.MemberOnlyOutputPath, oo.DisableRedis, oo.DisableLiveFromStart, oo.DontSendStartMessage).Result,
+                (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.MemberOnlyOutputPath, so.AutoDeleteArchived, so.DisableLiveFromStart).Result,
                 Error => ResultType.None);
 
 #if DEBUG
@@ -81,6 +81,9 @@ namespace Youtube_Stream_Record
 
             [Option('u', "unarchived-output", Required = true, HelpText = "刪檔直播輸出路徑")]
             public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
+
+            [Option('m', "member-only-output", Required = true, HelpText = "會限直播輸出路徑")]
+            public string MemberOnlyOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
 
             [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無SSD且須大量同時錄影請開啟本選項")]
             public bool DisableLiveFromStart { get; set; } = false;

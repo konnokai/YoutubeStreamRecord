@@ -1,6 +1,7 @@
 version: "3.9"
 services:
   youtube-record:
+    container_name: youtube-record-master
     image: jun112561/youtube-record:master
     tty: true
     stdin_open: true
@@ -9,6 +10,7 @@ services:
       - ${RecordPath:-./record}:/output
       - ${TempPath:-./record}:/temp_path
       - ${UnArchivedPath:-./unarchived}:/unarchived_stream
+      - ${MemberOnlyPath:-./member_only}:/member_only_stream
       - ${CookiesFilePath:-./cookies.txt}:/app/cookies.txt
     env_file:
       - .env
