@@ -443,6 +443,7 @@ namespace Youtube_Stream_Record
                 $"{Utility.GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output",
                 $"{Utility.GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path",
                 $"{Utility.GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}:/unarchived",
+                $"{Utility.GetEnvironmentVariable("MemberOnlyPath", typeof(string), true)}:/member_only",
                 $"{Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt"
             };
             parms.HostConfig = new HostConfig() { Binds = binds };
@@ -476,6 +477,8 @@ namespace Youtube_Stream_Record
                 "/temp_path",
                 "-u",
                 "/unarchived",
+                "-m",
+                "/member_only",
                 "--disable-live-from-start",
                 dontSendStartMessage ? "--dont-send-start-message" : ""
             };
