@@ -31,14 +31,15 @@
 ## Docker環境，單一直播錄影模式
 
 1. 複製專案 `git clone https://github.com/jun112561/Youtube-Stream-Record.git` (或是單獨下載 `.env_sample` 並放到新資料夾)
-2. 根據上方說明製作 `cookies.txt` 並將文件放置專案目錄
-3. 開啟 `.env_sample` 並編輯 `GoogleApiKey` 成正確的 ApiKey 後存檔為 `.env` 到專案目錄內
+2. `cd Youtube-Stream-Record`
+3. 根據上方說明製作 `cookies.txt` 並將文件放置專案目錄
+4. 開啟 `.env_sample` 並編輯 `GoogleApiKey` 成正確的 ApiKey 後存檔為 `.env` 到專案目錄內
 
 取得11碼的 VideoId 並替換下方指令中的 `(VideoId)` 區塊
 
-執行 `docker run -it -d --env-file ".env" -v "./record/output:/output" -v "./record/temp:/temp_path" -v "./record/unarchived:/unarchived_stream" -v "./record/member_only:/member_only_stream" -v "./cookies.txt:/app/cookies.txt" jun112561/youtube-record:master onceondocker (VideoId) -d -s`
+執行 `docker run -it -d --env-file ".env" -v "/record/output:/output" -v "/record/temp:/temp_path" -v "/record/unarchived:/unarchived_stream" -v "/record/member_only:/member_only_stream" -v "/cookies.txt:/app/cookies.txt" jun112561/youtube-record:master onceondocker (VideoId) -d -s`
 
-Docker -v 參數可自行替換實體主機中想要保存的路徑，唯獨 Container 掛載路徑不可變更
+Docker -v 參數請自行替換成實體主機中要保存的絕對路徑，唯獨 Container 掛載路徑不可變更
 
 若需要從頭開始錄影請將指令最後面的 `-s` 移除
 
