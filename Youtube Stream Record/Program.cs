@@ -35,8 +35,9 @@ namespace Youtube_Stream_Record
 
             var result = Parser.Default.ParseArguments<OnceOptions, SubOptions>(args)
                 .MapResult(
-                (OnceOptions oo) => Record.StartRecord(oo.ChannelId, oo.OutputPath, oo.TempPath, oo.UnarchivedOutputPath, oo.MemberOnlyOutputPath, oo.DisableRedis, oo.DisableLiveFromStart, oo.DontSendStartMessage).Result,
-                (SubOptions so) => Subscribe.SubRecord(so.OutputPath, so.TempPath, so.UnarchivedOutputPath, so.MemberOnlyOutputPath, so.AutoDeleteArchived, so.DisableLiveFromStart).Result,
+                (OnceOptions options) => Record.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
+                (OnceOnDockerOptions options) => Record.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
+                (SubOptions options) => Subscribe.SubRecord(options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.AutoDeleteArchived, options.DisableLiveFromStart).Result,
                 Error => ResultType.None);
 
 #if DEBUG
@@ -92,11 +93,27 @@ namespace Youtube_Stream_Record
         [Verb("once", HelpText = "單次錄影")]
         public class OnceOptions : RequiredOptions
         {
-            [Value(0, Required = true, HelpText = "頻道網址或直播Id")]
-            public string ChannelId { get; set; }
+            [Value(0, Required = true, HelpText = "直播Id (需為11字元，如 Id 內有 '-' 請用 '@' 替換)")]
+            public string VideolId { get; set; }
 
             [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
             public bool DisableRedis { get; set; } = false;
+
+            [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
+            public bool DontSendStartMessage { get; set; } = false;
+        }
+
+        [Verb("onceondocker", HelpText = "在 Docker 環境內單次錄影")]
+        public class OnceOnDockerOptions
+        {
+            [Value(0, Required = true, HelpText = "直播Id (需為11字元，如 Id 內有 '-' 請用 '@' 替換)")]
+            public string VideolId { get; set; }
+
+            [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
+            public bool DisableRedis { get; set; } = false;
+
+            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無SSD且須大量同時錄影請開啟本選項")]
+            public bool DisableLiveFromStart { get; set; } = false;
 
             [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
             public bool DontSendStartMessage { get; set; } = false;

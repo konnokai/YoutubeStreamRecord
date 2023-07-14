@@ -464,21 +464,10 @@ namespace Youtube_Stream_Record
                 }
             };
 
-            // 在Docker環境內的話則直接指定預設路徑
-            parms.Entrypoint = new List<string>
+            parms.Cmd = new List<string>
             {
-                "dotnet",
-                "Youtube Stream Record.dll",
-                "once",
+                "onceondocker",
                 videoId,
-                "-o",
-                "/output",
-                "-t",
-                "/temp_path",
-                "-u",
-                "/unarchived",
-                "-m",
-                "/member_only",
                 "--disable-live-from-start",
                 dontSendStartMessage ? "--dont-send-start-message" : ""
             };
