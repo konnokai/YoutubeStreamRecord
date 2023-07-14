@@ -77,9 +77,14 @@ namespace Youtube_Stream_Record
                     }
                     catch (HttpRequestException httpEx)
                     {
-                        Log.Error(httpEx, "GetSnippetDataByVideoIdAsync");
+                        Log.Error(httpEx, "GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync");
                         isError = true;
                         await Task.Delay(1000);
+                    }
+                    catch (Google.GoogleApiException apiEx) when (apiEx.HttpStatusCode == System.Net.HttpStatusCode.BadRequest && apiEx.Message.Contains("API key not valid"))
+                    {
+                        Log.Error(apiEx, "GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync: Google API Key 錯誤");
+                        return ResultType.Error;
                     }
                 } while (isError);
             }
