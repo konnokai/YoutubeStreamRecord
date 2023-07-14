@@ -33,7 +33,7 @@ namespace Youtube_Stream_Record
                 ApiKey = Utility.BotConfig.GoogleApiKey,
             });
 
-            var result = Parser.Default.ParseArguments<OnceOptions, SubOptions>(args)
+            var result = Parser.Default.ParseArguments<OnceOptions, OnceOnDockerOptions, SubOptions>(args)
                 .MapResult(
                 (OnceOptions options) => Record.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
                 (OnceOnDockerOptions options) => Record.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
