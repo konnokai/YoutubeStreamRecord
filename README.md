@@ -37,7 +37,7 @@
 
 取得11碼的 VideoId 並替換下方指令中的 `(VideoId)` 區塊
 
-執行 `docker run -it -d --env-file ".env" -v "/record/output:/output" -v "/record/temp:/temp_path" -v "/record/unarchived:/unarchived_stream" -v "/record/member_only:/member_only_stream" -v "/cookies.txt:/app/cookies.txt" jun112561/youtube-record:master onceondocker (VideoId) -d -s`
+執行 `docker run -it -d --env-file .env -v "/record/output:/output" -v "/record/temp:/temp_path" -v "/record/unarchived:/unarchived_stream" -v "/record/member_only:/member_only_stream" -v "/cookies.txt:/app/cookies.txt" jun112561/youtube-record:master onceondocker (VideoId) -d -s`
 
 Docker -v 參數請自行替換成實體主機中要保存的絕對路徑，唯獨 Container 掛載路徑不可變更
 

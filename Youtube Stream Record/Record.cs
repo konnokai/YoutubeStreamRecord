@@ -345,7 +345,7 @@ namespace Youtube_Stream_Record
                     MoveVideo(outputPath, "youtube.endstream");
 
                     // https://social.msdn.microsoft.com/Forums/en-US/c2c12a9f-dc4c-4c9a-b652-65374ef999d8/get-docker-container-id-in-code?forum=aspdotnetcore
-                    if (Utility.InDocker)
+                    if (Utility.InDocker && !isDisableRedis)
                         Utility.Redis.GetSubscriber().Publish("youtube.removeById", Environment.MachineName);
                 }
             }
