@@ -7,6 +7,7 @@ public class BotConfig
 {
     public string GoogleApiKey { get; set; } = default;
     public string RedisOption { get; set; } = "127.0.0.1,syncTimeout=3000";
+    public string UptimeKumaPushUrl { get; set; } = "";
 
     public void InitBotConfig()
     {
@@ -51,6 +52,7 @@ public class BotConfig
 
                 GoogleApiKey = config.GoogleApiKey;
                 RedisOption = config.RedisOption;
+                UptimeKumaPushUrl = config.UptimeKumaPushUrl;
             }
             catch (Exception ex)
             {

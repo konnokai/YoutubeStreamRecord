@@ -289,6 +289,8 @@ namespace Youtube_Stream_Record
             Log.Info($"會限直播保存路徑: {memberOnlyOutputPath}");
             Log.Info("已訂閱Redis頻道");
 
+            UptimeKumaClient.Init(Utility.BotConfig.UptimeKumaPushUrl);
+
             Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");
             Regex fileNameRegex = new Regex(@"youtube_(?'ChannelId'[\w\-\\_]{24})_(?'Date'\d{8})_(?'Time'\d{6})_(?'VideoId'[\w\-\\_]{11})\.(?'Ext'[\w]{2,4})");
 
