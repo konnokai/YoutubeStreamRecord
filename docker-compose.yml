@@ -14,6 +14,7 @@ services:
       - ${CookiesFilePath:-./cookies.txt}:/app/cookies.txt
     env_file:
       - .env
+    restart: unless-stopped
     networks:
       youtube-record:
         ipv4_address: 172.28.0.2
