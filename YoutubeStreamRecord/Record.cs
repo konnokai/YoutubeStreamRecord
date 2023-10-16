@@ -4,9 +4,9 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
-using ResultType = Youtube_Stream_Record.Program.ResultType;
+using ResultType = YoutubeStreamRecord.Program.ResultType;
 
-namespace Youtube_Stream_Record
+namespace YoutubeStreamRecord
 {
     public static class Record
     {

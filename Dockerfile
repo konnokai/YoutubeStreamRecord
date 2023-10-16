@@ -2,14 +2,14 @@
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["Youtube Stream Record/Youtube Stream Record.csproj", "Youtube Stream Record/"]
-RUN dotnet restore "Youtube Stream Record/Youtube Stream Record.csproj"
+COPY ["YoutubeStreamRecord/YoutubeStreamRecord.csproj", "YoutubeStreamRecord/"]
+RUN dotnet restore "YoutubeStreamRecord/YoutubeStreamRecord.csproj"
 COPY . .
-WORKDIR "/src/Youtube Stream Record"
-RUN dotnet build "Youtube Stream Record.csproj" -c Release -o /app/build
+WORKDIR "/src/YoutubeStreamRecord"
+RUN dotnet build "YoutubeStreamRecord.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "Youtube Stream Record.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "YoutubeStreamRecord.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM jun112561/dotnet_with_yt-dlp:2023.10.13 AS base
 WORKDIR /app
@@ -19,5 +19,5 @@ ENV TZ="Asia/Taipei"
 
 STOPSIGNAL SIGQUIT
 
-ENTRYPOINT ["dotnet", "Youtube Stream Record.dll"]
+ENTRYPOINT ["dotnet", "YoutubeStreamRecord.dll"]
 CMD [ "sub", "-d", "-s", "-o", "/output", "-t", "/temp_path", "-u", "/unarchived_stream", "-m", "/member_only_stream"]

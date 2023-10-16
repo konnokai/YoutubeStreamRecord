@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.IO;
-using Youtube_Stream_Record;
+using YoutubeStreamRecord;
 
 public class BotConfig
 {

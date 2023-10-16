@@ -4,7 +4,7 @@ using Google.Apis.YouTube.v3;
 using System;
 using System.Reflection;
 
-namespace Youtube_Stream_Record
+namespace YoutubeStreamRecord
 {
     public static class Program
     {

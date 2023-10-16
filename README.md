@@ -21,7 +21,7 @@
 
 本模式是設計給直播小幫手串接使用，一般無需使用
 
-1. 複製專案 `git clone https://github.com/jun112561/Youtube-Stream-Record.git`
+1. 複製專案 `git clone https://github.com/jun112561/YoutubeStreamRecord.git`
 2. 開啟 `.env_sample` 編輯為正確設定值後存檔為 `.env` 到專案目錄內
  **\*請務必確定所有路徑皆為絕對路徑\***
 3. 部屬 Docker Image `docker compose up -d`
@@ -30,8 +30,8 @@
 
 ## Docker環境，單一直播錄影模式
 
-1. 複製專案 `git clone https://github.com/jun112561/Youtube-Stream-Record.git` (或是單獨下載 `.env_sample` 並放到新資料夾)
-2. `cd Youtube-Stream-Record`
+1. 複製專案 `git clone https://github.com/jun112561/YoutubeStreamRecord.git` (或是單獨下載 `.env_sample` 並放到新資料夾)
+2. `cd YoutubeStreamRecord`
 3. 根據上方說明製作 `cookies.txt` 並將文件放置專案目錄
 4. 開啟 `.env_sample` 並編輯 `GoogleApiKey` 成正確的 ApiKey 後存檔為 `.env` 到專案目錄內
 

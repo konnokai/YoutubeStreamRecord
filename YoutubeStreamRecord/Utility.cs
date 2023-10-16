@@ -13,7 +13,7 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace Youtube_Stream_Record
+namespace YoutubeStreamRecord
 {
     public static class Utility
     {

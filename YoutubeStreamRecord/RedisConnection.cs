@@ -1,7 +1,7 @@
 ﻿using StackExchange.Redis;
 using System;
 
-namespace Youtube_Stream_Record
+namespace YoutubeStreamRecord
 {
     public sealed class RedisConnection
     {

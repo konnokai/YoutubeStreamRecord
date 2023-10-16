@@ -10,9 +10,9 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using ResultType = Youtube_Stream_Record.Program.ResultType;
+using ResultType = YoutubeStreamRecord.Program.ResultType;
 
-namespace Youtube_Stream_Record
+namespace YoutubeStreamRecord
 {
     public class Subscribe
     {
