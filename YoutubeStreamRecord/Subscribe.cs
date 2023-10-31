@@ -53,9 +53,14 @@ namespace YoutubeStreamRecord
 
                 try
                 {
-                    if (!await Utility.CheckYTCookieAsync(@"/app/cookies.txt"))
+                    var checkResult = await Utility.CheckYTCookieAsync(@"/app/cookies.txt");
+                    if (checkResult != Utility.CheckResult.Ok)
                     {
-                        Log.Error("Cookie 檢測失敗，請確認是否使用正確的 YouTube Cookie");
+                        Log.Error($"Cookie 檢測失敗，請確認是否使用正確的 YouTube Cookie，檢測結果: {checkResult}");
+                    }
+                    else
+                    {
+                        Log.Info("Cookie 檢測成功");
                     }
                 }
                 catch (Exception ex)

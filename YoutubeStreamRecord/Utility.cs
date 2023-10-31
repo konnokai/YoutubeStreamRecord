@@ -176,10 +176,19 @@ namespace YoutubeStreamRecord
             return false;
         }
 
-        public static async Task<bool> CheckYTCookieAsync(string cookieFilePath)
+        public enum CheckResult
+        {
+            Ok,
+            Redirect,
+            CookieFileNotFound,
+            CookieFileError,
+            OtherError,
+        }
+
+        public static async Task<CheckResult> CheckYTCookieAsync(string cookieFilePath)
         {
             if (!File.Exists(cookieFilePath))
-                throw new FileNotFoundException(cookieFilePath);
+                return CheckResult.CookieFileNotFound;
 
             HttpClientHandler handler = new()
             {
@@ -202,7 +211,7 @@ namespace YoutubeStreamRecord
             }
 
             if (handler.CookieContainer.Count < 1)
-                return false;
+                return CheckResult.CookieFileError;
 
             using HttpClient client = new(handler, true);
             client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36");
@@ -211,15 +220,15 @@ namespace YoutubeStreamRecord
             {
                 var respone = await client.GetAsync("https://www.youtube.com/paid_memberships");
                 if (respone.Headers.TryGetValues("Location", out var values))
-                    return false;
+                    return CheckResult.Redirect;
 
                 respone.EnsureSuccessStatusCode();
-                return true;
+                return CheckResult.Ok;
             }
             catch (Exception ex)
             {
                 Console.WriteLine(ex.ToString());
-                return false;
+                return CheckResult.OtherError;
             }
         }
     }
