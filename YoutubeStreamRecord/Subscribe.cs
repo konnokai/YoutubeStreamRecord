@@ -268,12 +268,12 @@ namespace YoutubeStreamRecord
                 Log.Info($"已接收測試請求");
             });
 
-            sub.Subscribe("youtube.test.cookie",async (channel, nope) =>
+            sub.Subscribe("youtube.test.cookie", async (channel, nope) =>
             {
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && Utility.InDocker)
                 {
                     Log.Info($"已接收 Cookie 測試請求");
-                    
+
                     var result = await Utility.CheckYTCookieAsync(@"/app/cookies.txt");
 
                     Log.Info($"測試結果: {result}");
