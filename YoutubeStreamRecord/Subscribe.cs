@@ -47,8 +47,20 @@ namespace YoutubeStreamRecord
 
                 if (attr.HasFlag(FileAttributes.Directory))
                 {
-                    Log.Error($"Cookies路徑為資料夾，請確認路徑設定是否正確，已設定的路徑為: {Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}");
+                    Log.Error($"Cookies 路徑為資料夾，請確認路徑設定是否正確，已設定的路徑為: {Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}");
                     return ResultType.Error;
+                }
+
+                try
+                {
+                    if (!await Utility.CheckYTCookieAsync(@"/app/cookies.txt"))
+                    {
+                        Log.Error("Cookie 檢測失敗，請確認是否使用正確的 YouTube Cookie");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "CheckYTCookieAsync");
                 }
 
                 try
@@ -254,6 +266,22 @@ namespace YoutubeStreamRecord
             sub.Subscribe("youtube.test", (channel, nope) =>
             {
                 Log.Info($"已接收測試請求");
+            });
+
+            sub.Subscribe("youtube.test.cookie",async (channel, nope) =>
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && Utility.InDocker)
+                {
+                    Log.Info($"已接收 Cookie 測試請求");
+                    
+                    var result = await Utility.CheckYTCookieAsync(@"/app/cookies.txt");
+
+                    Log.Info($"測試結果: {result}");
+                }
+                else
+                {
+                    Log.Info($"已接收 Cookie 測試請求但不在 Docker 環境內，略過");
+                }
             });
 
             sub.Subscribe("youtube.unarchived", (channel, videoId) =>

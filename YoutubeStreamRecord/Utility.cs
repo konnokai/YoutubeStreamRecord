@@ -1,16 +1,16 @@
 ﻿using Google.Apis.YouTube.v3;
 using Google.Apis.YouTube.v3.Data;
-using HtmlAgilityPack;
 using Polly;
 using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Management;
+using System.Net.Http;
 using System.Net;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace YoutubeStreamRecord
@@ -27,91 +27,6 @@ namespace YoutubeStreamRecord
 
         public static string GetEnvSlash()
             => (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "\\" : "/");
-
-
-        public static async Task<string> GetChannelId(string channelUrl)
-        {
-            if (string.IsNullOrEmpty(channelUrl))
-                throw new ArgumentNullException(channelUrl);
-
-            channelUrl = channelUrl.Trim();
-
-            switch (channelUrl.ToLower())
-            {
-                case "all":
-                case "holo":
-                case "2434":
-                case "other":
-                    return channelUrl.ToLower();
-            }
-
-            string channelId = "";
-
-            Regex regex = new Regex(@"(http[s]{0,1}://){0,1}(www\.){0,1}(?'Host'[^/]+)/(?'Type'[^/]+)/(?'ChannelName'[\w%\-]+)");
-            Match match = regex.Match(channelUrl);
-            if (!match.Success)
-                throw new UriFormatException("錯誤，請確認是否輸入YouTube頻道網址");
-
-            if (match.Groups["Type"].Value == "channel")
-            {
-                channelId = match.Groups["ChannelName"].Value;
-                if (!channelId.StartsWith("UC")) throw new UriFormatException("錯誤，頻道Id格式不正確");
-                if (channelId.Length != 24) throw new UriFormatException("錯誤，頻道Id字元數不正確");
-            }
-            else if (match.Groups["Type"].Value == "c")
-            {
-                string channelName = WebUtility.UrlDecode(match.Groups["ChannelName"].Value);
-
-                if (await Redis.GetDatabase().KeyExistsAsync($"discord_stream_bot:ChannelNameToId:{channelName}"))
-                {
-                    channelId = await Redis.GetDatabase().StringGetAsync($"discord_stream_bot:ChannelNameToId:{channelName}");
-                }
-                else
-                {
-                    try
-                    {
-                        //https://stackoverflow.com/a/36559834
-                        HtmlWeb htmlWeb = new HtmlWeb();
-                        var htmlDocument = await htmlWeb.LoadFromWebAsync($"https://www.youtube.com/c/{channelName}");
-                        var node = htmlDocument.DocumentNode.Descendants().FirstOrDefault((x) => x.Name == "meta" && x.Attributes.Any((x2) => x2.Name == "itemprop" && x2.Value == "channelId"));
-                        if (node == null)
-                            throw new UriFormatException("錯誤，請確認是否輸入正確的YouTube頻道網址\n" +
-                                "或確認該頻道是否存在");
-
-                        channelId = node.Attributes.FirstOrDefault((x) => x.Name == "content").Value;
-                        if (string.IsNullOrEmpty(channelId))
-                            throw new UriFormatException("錯誤，請確認是否輸入正確的YouTube頻道網址\n" +
-                                "或確認該頻道是否存在");
-
-                        await Redis.GetDatabase().StringSetAsync($"discord_stream_bot:ChannelNameToId:{channelName}", channelId);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(channelUrl);
-                        Log.Error(ex.ToString());
-                        throw;
-                    }
-                }
-            }
-
-            return channelId;
-        }
-
-        public static async Task<(string ChannelId, string ChannelTitle)> GetChannelDataByChannelIdAsync(string channelId)
-        {
-            try
-            {
-                var channel = YouTube.Channels.List("snippet");
-                channel.Id = channelId;
-                var response = await channel.ExecuteAsync().ConfigureAwait(false);
-                return (channelId, response.Items[0].Snippet.Title);
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "GetChannelDataByChannelIdAsync");
-                return ("", "");
-            }
-        }
 
         public static async Task<(VideoSnippet VideoSnippet, VideoLiveStreamingDetails VideoLiveStreamingDetails)> GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync(string videoId)
         {
@@ -259,6 +174,53 @@ namespace YoutubeStreamRecord
             }
 
             return false;
+        }
+
+        public static async Task<bool> CheckYTCookieAsync(string cookieFilePath)
+        {
+            if (!File.Exists(cookieFilePath))
+                throw new FileNotFoundException(cookieFilePath);
+
+            HttpClientHandler handler = new()
+            {
+                AllowAutoRedirect = false,
+                UseCookies = true,
+                CookieContainer = new CookieContainer()
+            };
+
+            foreach (var item in File.ReadAllLines(cookieFilePath))
+            {
+                if (!item.StartsWith(".youtube.com"))
+                    continue;
+
+                try
+                {
+                    string[] cookie = item.Split('\t');
+                    handler.CookieContainer.Add(new Cookie(cookie[5], cookie[6], cookie[2], cookie[0]));
+                }
+                catch { }
+            }
+
+            if (handler.CookieContainer.Count < 1)
+                return false;
+
+            using HttpClient client = new(handler, true);
+            client.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36");
+
+            try
+            {
+                var respone = await client.GetAsync("https://www.youtube.com/paid_memberships");
+                if (respone.Headers.TryGetValues("Location", out var values))
+                    return false;
+
+                respone.EnsureSuccessStatusCode();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+                return false;
+            }
         }
     }
 
