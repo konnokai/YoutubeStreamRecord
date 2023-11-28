@@ -380,7 +380,7 @@ namespace YoutubeStreamRecord
                     {
                         Log.Error(ex, "autoDeleteArchivedTimer");
                     }
-                }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
+                }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 01:00:00}").Subtract(DateTime.Now).TotalSeconds)), TimeSpan.FromDays(1));
                 Log.Warn("已開啟自動刪除14天後的存檔");
             }
             #endregion
