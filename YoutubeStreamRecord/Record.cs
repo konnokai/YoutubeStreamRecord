@@ -48,6 +48,7 @@ namespace YoutubeStreamRecord
                 }
             }
 
+            bool isStartStream = false;
             if (id.Length == 11)
             {
                 videoId = id;
@@ -73,6 +74,7 @@ namespace YoutubeStreamRecord
                         channelId = result.VideoSnippet.ChannelId;
                         channelTitle = result.VideoSnippet.ChannelTitle;
                         streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledStartTime.Value;
+                        isStartStream = result.VideoLiveStreamingDetails.ActualStartTime.HasValue;
                         isError = false;
                     }
                     catch (HttpRequestException httpEx)
@@ -98,11 +100,18 @@ namespace YoutubeStreamRecord
             Log.Info($"頻道Id: {channelId}");
             Log.Info($"頻道名稱: {channelTitle}");
             Log.Info($"直播預計開始時間: {streamScheduledStartTime}");
-            do
+            if (!isStartStream)
             {
-                await Task.Delay(1000);
-                if (Utility.IsClose) return ResultType.None;
-            } while (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now);
+                do
+                {
+                    await Task.Delay(1000);
+                    if (Utility.IsClose) return ResultType.None;
+                } while (streamScheduledStartTime.AddMinutes(-1) > DateTime.Now);
+            }
+            else
+            {
+                Log.Warn($"已開台，開始錄影");
+            }
 
             if (!argOutputPath.EndsWith(Utility.GetEnvSlash()))
                 argOutputPath += Utility.GetEnvSlash();
