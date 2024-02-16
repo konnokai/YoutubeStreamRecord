@@ -11,7 +11,7 @@ RUN dotnet build "YoutubeStreamRecord.csproj" -c Release -o /app/build
 FROM build AS publish
 RUN dotnet publish "YoutubeStreamRecord.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-FROM jun112561/dotnet_with_yt-dlp:2023.10.13 AS base
+FROM jun112561/dotnet_with_yt-dlp:2023.12.30 AS base
 WORKDIR /app
 COPY --from=publish /app/publish .
 
