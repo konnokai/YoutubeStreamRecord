@@ -463,64 +463,67 @@ namespace YoutubeStreamRecord
 
         private static async Task StartRecordContainer(string videoId, VideoSnippet snippetData, bool dontSendStartMessage)
         {
-            var parms = new CreateContainerParameters();
-            parms.Image = "jun112561/youtube-record:master";
-            parms.Name = $"record-{videoId.Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss}";
-
-            parms.Env = new List<string>
+            var parms = new CreateContainerParameters
             {
-                $"GoogleApiKey={Utility.GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}",
-                $"RedisOption={Utility.GetEnvironmentVariable("RedisOption", typeof(string), true)}"
-            };
+                Image = "jun112561/youtube-record:master",
+                Name = $"record-{videoId.Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss}",
 
-            List<string> binds = new List<string>
-            {
-                $"{Utility.GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output",
-                $"{Utility.GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path",
-                $"{Utility.GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}:/unarchived",
-                $"{Utility.GetEnvironmentVariable("MemberOnlyPath", typeof(string), true)}:/member_only",
-                $"{Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt"
-            };
-            parms.HostConfig = new HostConfig() { Binds = binds };
-
-            parms.Labels = new Dictionary<string, string>
-            {
-                { "me.konnokai.record.video.title", snippetData.Title },
-                { "me.konnokai.record.video.id", videoId.Replace("@", "-") },
-                { "me.konnokai.record.channel.title", snippetData.ChannelTitle },
-                { "me.konnokai.record.channel.id", snippetData.ChannelId }
-            };
-
-            parms.NetworkingConfig = new NetworkingConfig()
-            {
-                EndpointsConfig = new Dictionary<string, EndpointSettings>()
+                Env = new List<string>
                 {
-                    { "" , new EndpointSettings() { NetworkID = NetworkId } }
-                }
+                    $"GoogleApiKey={Utility.GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}",
+                    $"RedisOption={Utility.GetEnvironmentVariable("RedisOption", typeof(string), true)}"
+                },
+
+                HostConfig = new HostConfig()
+                {
+                    Binds = new List<string>()
+                    {
+                        $"{Utility.GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output",
+                        $"{Utility.GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path",
+                        $"{Utility.GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}:/unarchived",
+                        $"{Utility.GetEnvironmentVariable("MemberOnlyPath", typeof(string), true)}:/member_only",
+                        $"{Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt"
+                    }
+                },
+
+                Labels = new Dictionary<string, string>
+                {
+                    { "me.konnokai.record.video.title", snippetData.Title },
+                    { "me.konnokai.record.video.id", videoId.Replace("@", "-") },
+                    { "me.konnokai.record.channel.title", snippetData.ChannelTitle },
+                    { "me.konnokai.record.channel.id", snippetData.ChannelId }
+                },
+
+                NetworkingConfig = new NetworkingConfig()
+                {
+                    EndpointsConfig = new Dictionary<string, EndpointSettings>()
+                    {
+                        { "" , new EndpointSettings() { NetworkID = NetworkId } }
+                    }
+                },
+
+                Cmd = new List<string>
+                {
+                    "onceondocker",
+                    videoId,
+                    "--disable-live-from-start",
+                    dontSendStartMessage ? "--dont-send-start-message" : ""
+                },
+
+                // 不要讓程式自己Attach以免Log混亂
+                AttachStdout = false,
+                AttachStdin = false,
+                AttachStderr = false,
+
+                // 允許另外透過其他方法Attach進去交互
+                OpenStdin = true,
+                Tty = true
             };
-
-            parms.Cmd = new List<string>
-            {
-                "onceondocker",
-                videoId,
-                "--disable-live-from-start",
-                dontSendStartMessage ? "--dont-send-start-message" : ""
-            };
-
-            // 不要讓程式自己Attach以免Log混亂
-            parms.AttachStdout = false;
-            parms.AttachStdin = false;
-            parms.AttachStderr = false;
-
-            // 允許另外透過其他方法Attach進去交互
-            parms.OpenStdin = true;
-            parms.Tty = true;
 
             try
             {
                 var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms, CancellationToken.None);
                 Log.Info($"已建立容器: {containerResponse.ID}");
-                ContainerStartParameters containerStartParameters = new ContainerStartParameters();
 
                 if (containerResponse.Warnings.Any())
                     Log.Warn($"容器警告: {string.Join('\n', containerResponse.Warnings)}");
