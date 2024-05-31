@@ -243,7 +243,14 @@ namespace YoutubeStreamRecord
             if (OperatingSystem.IsWindows())
                 process.Kill();
             else
-                sys_kill(process.Id, (int)sig);
+            {
+                Task.Run(() =>
+                {
+                    sys_kill(process.Id, (int)sig);
+                    Task.Delay(100);
+                    sys_kill(process.Id, (int)sig);
+                });
+            }
         }
     }
 
