@@ -241,15 +241,12 @@ namespace YoutubeStreamRecord
         public static void Kill(this Process process, Signum sig)
         {
             if (OperatingSystem.IsWindows())
+            {
                 process.Kill();
+            }
             else
             {
-                Task.Run(() =>
-                {
-                    sys_kill(process.Id, (int)sig);
-                    Task.Delay(100);
-                    sys_kill(process.Id, (int)sig);
-                });
+                sys_kill(process.Id, (int)sig);
             }
         }
     }

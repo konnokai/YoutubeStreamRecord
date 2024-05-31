@@ -193,7 +193,7 @@ namespace YoutubeStreamRecord
                         {
                             Log.Warn($"{videoId} 待機所已刪除");
                             isCanNotRecordStream = true;
-                            process.Kill(Signum.SIGQUIT);
+                            process.Kill(Signum.SIGTERM);
                             return;
                         }
 
@@ -202,13 +202,13 @@ namespace YoutubeStreamRecord
                             streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledStartTime.Value;
                             Log.Info($"已更改開台時間: {streamScheduledStartTime}");
                             isNeedRestart = true;
-                            process.Kill(Signum.SIGQUIT);
+                            process.Kill(Signum.SIGTERM);
                         }
                         else
                         {
                             Log.Warn("已等待一小時但尚未開始直播，取消錄影");
                             isCanNotRecordStream = true;
-                            process.Kill(Signum.SIGQUIT);
+                            process.Kill(Signum.SIGTERM);
                         }
                     }
                 });
@@ -239,19 +239,19 @@ namespace YoutubeStreamRecord
                         {
                             Log.Error("檢測到無法讀取的會限");
                             Utility.Redis.GetSubscriber().Publish("youtube.startstream", $"{videoId}:1");
-                            process.Kill(Signum.SIGQUIT);
+                            process.Kill(Signum.SIGTERM);
                             isCanNotRecordStream = true;
                         }
                         else if (e.Data.Contains("video is private") || e.Data.Contains("Private video"))
                         {
                             Log.Error("已私人化，取消錄影");
-                            process.Kill(Signum.SIGQUIT);
+                            process.Kill(Signum.SIGTERM);
                             isCanNotRecordStream = true;
                         }
                         else if (e.Data.Contains("video has been removed") || e.Data.Contains("removed by the uploader"))
                         {
                             Log.Error("已移除，取消錄影");
-                            process.Kill(Signum.SIGQUIT);
+                            process.Kill(Signum.SIGTERM);
                             isCanNotRecordStream = true;
                         }
                     }
