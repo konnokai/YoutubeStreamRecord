@@ -66,7 +66,7 @@ namespace StreamRecordTools.Command.Record
                             return ResultType.Error;
                         }
 
-                        if (result.VideoLiveStreamingDetails.ScheduledEndTimeDateTimeOffset == null)
+                        if (result.VideoLiveStreamingDetails.ScheduledStartTimeDateTimeOffset == null)
                         {
                             Log.Error($"{videoId} 無開始直播時間");
                             return ResultType.Error;
@@ -74,7 +74,7 @@ namespace StreamRecordTools.Command.Record
 
                         channelId = result.VideoSnippet.ChannelId;
                         channelTitle = result.VideoSnippet.ChannelTitle;
-                        streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledEndTimeDateTimeOffset.Value.LocalDateTime;
+                        streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledStartTimeDateTimeOffset.Value.LocalDateTime;
                         isStartStream = result.VideoLiveStreamingDetails.ActualStartTimeDateTimeOffset.HasValue;
                         isError = false;
                     }
