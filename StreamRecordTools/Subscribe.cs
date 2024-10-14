@@ -11,17 +11,24 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using static StreamRecordTools.Program;
 using ResultType = StreamRecordTools.Program.ResultType;
 
 namespace StreamRecordTools
 {
     public class Subscribe
     {
+        static string NetworkId { get; set; } = "";
+        static string OutputPath { get; set; } = "";
+        static string TempPath { get; set; } = "";
+        static string UnarchivedOutputPath { get; set; } = "";
+        static string MemberOnlyOutputPath { get; set; } = "";
+        static bool IsDisableLiveFromStart { get; set; } = false;
+
         static Timer autoDeleteArchivedTimer, autoDeleteTempRecordTimer, autoCheckIsLiveUnArchivedTimer;
         static DockerClient dockerClient = null;
-        static string NetworkId = "";
 
-        public static async Task<ResultType> SubRecord(string outputPath, string tempPath, string unarchivedOutputPath, string memberOnlyOutputPath, bool autoDeleteArchived, bool isDisableLiveFromStart = false)
+        public static async Task<ResultType> SubRecord(SubOptions subOptions)
         {
             try
             {
@@ -35,10 +42,19 @@ namespace StreamRecordTools
                 return ResultType.Error;
             }
 
-            if (!outputPath.EndsWith(Utility.GetEnvSlash())) outputPath += Utility.GetEnvSlash();
-            if (!unarchivedOutputPath.EndsWith(Utility.GetEnvSlash())) unarchivedOutputPath += Utility.GetEnvSlash();
-            if (!memberOnlyOutputPath.EndsWith(Utility.GetEnvSlash())) memberOnlyOutputPath += Utility.GetEnvSlash();
-            var sub = Utility.Redis.GetSubscriber();
+            if (!subOptions.OutputPath.EndsWith(Utility.GetEnvSlash())) subOptions.OutputPath += Utility.GetEnvSlash();
+            if (!subOptions.UnarchivedOutputPath.EndsWith(Utility.GetEnvSlash())) subOptions.UnarchivedOutputPath += Utility.GetEnvSlash();
+            if (!subOptions.MemberOnlyOutputPath.EndsWith(Utility.GetEnvSlash())) subOptions.MemberOnlyOutputPath += Utility.GetEnvSlash();
+
+            Log.Info($"訂閱模式，保存路徑: {subOptions.OutputPath}");
+            Log.Info($"刪檔直播保存路徑: {subOptions.UnarchivedOutputPath}");
+            Log.Info($"會限直播保存路徑: {subOptions.MemberOnlyOutputPath}");
+
+            OutputPath = subOptions.OutputPath;
+            TempPath = subOptions.TempPath;
+            UnarchivedOutputPath = subOptions.UnarchivedOutputPath;
+            MemberOnlyOutputPath = subOptions.MemberOnlyOutputPath;
+            IsDisableLiveFromStart = subOptions.DisableLiveFromStart;
 
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && Utility.InDocker)
             {
@@ -105,7 +121,7 @@ namespace StreamRecordTools
                                 Driver = "default",
                                 Config = new List<IPAMConfig>()
                                 {
-                                    new IPAMConfig()
+                                    new()
                                     {
                                         Subnet = "172.28.0.0/16",
                                         Gateway= "172.28.0.1"
@@ -126,148 +142,20 @@ namespace StreamRecordTools
                 }
             }
 
+            var sub = Utility.Redis.GetSubscriber();
+
             sub.Subscribe(new("youtube.record", RedisChannel.PatternMode.Literal), async (redisChannel, videoId) =>
             {
                 Log.Info($"已接收錄影請求: {videoId}");
 
-                bool isError = false; VideoSnippet snippetData = null;
-                do
-                {
-                    try
-                    {
-                        snippetData = (await Utility.GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync(videoId)).VideoSnippet;
-                        isError = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, $"youtube.record: {videoId}");
-                        isError = true;
-                        await Task.Delay(1000);
-                    }
-                } while (isError);
-
-                if (snippetData == null)
-                {
-                    Log.Warn($"{videoId} 無直播資料，可能已被移除");
-                    return;
-                }
-
-                videoId = videoId.ToString().Replace("-", "@");
-                Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
-
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    if (Utility.InDocker && dockerClient != null)
-                    {
-                        await StartRecordContainer(videoId.ToString(), snippetData, false);
-                    }
-                    else if (!Utility.InDocker)
-                    {
-                        string procArgs = $"dotnet StreamRecordTools.dll" +
-                            $" once {videoId}" +
-                            $" -o \"{outputPath}\"" +
-                            $" -t \"{tempPath}\"" +
-                            $" -u \"{unarchivedOutputPath}\"" +
-                            $" -m \"{memberOnlyOutputPath}\"" +
-                            (isDisableLiveFromStart ? " --disable-live-from-start" : "");
-                        Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
-                    }
-                    else
-                    {
-                        Log.Error("在Docker環境內但無法建立新的容器來錄影，請確認環境是否正常");
-                    }
-                }
-                else
-                {
-                    string procArgs = $"dotnet StreamRecordTools.dll" +
-                        $" once {videoId}" +
-                        $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $" -u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $" -m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        (isDisableLiveFromStart ? " --disable-live-from-start" : "");
-
-                    Process.Start(new ProcessStartInfo()
-                    {
-                        FileName = "dotnet",
-                        Arguments = procArgs.Replace("dotnet ", ""),
-                        CreateNoWindow = false,
-                        UseShellExecute = true
-                    });
-                }
+                await StartRecordYouTube(videoId, false);
             });
 
             sub.Subscribe(new("youtube.rerecord", RedisChannel.PatternMode.Literal), async (redisChannel, videoId) =>
             {
                 Log.Info($"已接收重新錄影請求: {videoId}");
 
-                bool isError = false; VideoSnippet snippetData = null;
-                do
-                {
-                    try
-                    {
-                        snippetData = (await Utility.GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync(videoId)).VideoSnippet;
-                        isError = false;
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, $"youtube.record: {videoId}");
-                        isError = true;
-                        await Task.Delay(1000);
-                    }
-                } while (isError);
-
-                if (snippetData == null)
-                {
-                    Log.Warn($"{videoId} 無直播資料，可能已被移除");
-                    return;
-                }
-
-                videoId = videoId.ToString().Replace("-", "@");
-                Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
-
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-                {
-                    if (Utility.InDocker && dockerClient != null)
-                    {
-                        await StartRecordContainer(videoId.ToString(), snippetData, true);
-                    }
-                    else if (!Utility.InDocker)
-                    {
-                        string procArgs = $"dotnet StreamRecordTools.dll" +
-                            $" once {videoId}" +
-                            $" -o \"{outputPath}\"" +
-                            $" -t \"{tempPath}\"" +
-                            $" -u \"{unarchivedOutputPath}\"" +
-                            $" -m \"{memberOnlyOutputPath}\"" +
-                            (isDisableLiveFromStart ? " --disable-live-from-start" : "") +
-                            " --dont-send-start-message";
-                        Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
-                    }
-                    else
-                    {
-                        Log.Error("在 Docker 環境內但無法建立新的容器來錄影，請確認環境是否正常");
-                    }
-                }
-                else
-                {
-                    string procArgs = $"dotnet StreamRecordTools.dll" +
-                        $" once {videoId}" +
-                        $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $" -u \"{unarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        $" -m \"{memberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
-                        (isDisableLiveFromStart ? " --disable-live-from-start" : "" +
-                        " --dont-send-start-message");
-
-                    Process.Start(new ProcessStartInfo()
-                    {
-                        FileName = "dotnet",
-                        Arguments = procArgs.Replace("dotnet ", ""),
-                        CreateNoWindow = false,
-                        UseShellExecute = true
-                    });
-                }
+                await StartRecordYouTube(videoId, true);
             });
 
             sub.Subscribe(new("youtube.test", RedisChannel.PatternMode.Literal), (channel, nope) =>
@@ -319,24 +207,22 @@ namespace StreamRecordTools
                 }
             });
 
-            Log.Info($"訂閱模式，保存路徑: {outputPath}");
-            Log.Info($"刪檔直播保存路徑: {unarchivedOutputPath}");
-            Log.Info($"會限直播保存路徑: {memberOnlyOutputPath}");
             Log.Info("已訂閱Redis頻道");
+
 
             UptimeKumaClient.Init(Utility.BotConfig.UptimeKumaPushUrl);
 
             Regex regex = new(@"(\d{4})(\d{2})(\d{2})");
             Regex fileNameRegex = new(@"youtube_(?'ChannelId'[\w\-\\_]{24})_(?'Date'\d{8})_(?'Time'\d{6})_(?'VideoId'[\w\-\\_]{11})\.(?'Ext'[\w]{2,4})");
 
-            #region 自動刪除2天後的暫存存檔
-            if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath))
+            #region 自動刪除 2 天後的暫存存檔
+            if (Path.GetDirectoryName(OutputPath) != Path.GetDirectoryName(TempPath))
             {
                 autoDeleteTempRecordTimer = new Timer((obj) =>
                 {
                     try
                     {
-                        var list = Directory.GetDirectories(tempPath, "202?????", SearchOption.TopDirectoryOnly);
+                        var list = Directory.GetDirectories(TempPath, "202?????", SearchOption.TopDirectoryOnly);
                         foreach (var item in list)
                         {
                             var regexResult = regex.Match(item);
@@ -354,18 +240,18 @@ namespace StreamRecordTools
                         Log.Error(ex, "autoDeleteTempRecordTimer");
                     }
                 }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 00:00:00}").Subtract(DateTime.Now).TotalSeconds) + 3), TimeSpan.FromDays(1));
-                Log.Warn("已開啟自動刪除2天後的暫存存檔");
+                Log.Warn("已開啟自動刪除 2 天後的暫存存檔");
             }
             #endregion
 
-            #region 自動刪除14天後的存檔
-            if (autoDeleteArchived)
+            #region 自動刪除 14 天後的存檔
+            if (subOptions.AutoDeleteArchived)
             {
                 autoDeleteArchivedTimer = new Timer((obj) =>
                 {
                     try
                     {
-                        var list = Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly);
+                        var list = Directory.GetDirectories(OutputPath, "202?????", SearchOption.TopDirectoryOnly);
                         foreach (var item in list)
                         {
                             var regexResult = regex.Match(item);
@@ -383,7 +269,7 @@ namespace StreamRecordTools
                         Log.Error(ex, "autoDeleteArchivedTimer");
                     }
                 }, null, TimeSpan.FromSeconds(Math.Round(Convert.ToDateTime($"{DateTime.Now.AddDays(1):yyyy/MM/dd 01:00:00}").Subtract(DateTime.Now).TotalSeconds)), TimeSpan.FromDays(1));
-                Log.Warn("已開啟自動刪除14天後的存檔");
+                Log.Warn("已開啟自動刪除 14 天後的存檔");
             }
             #endregion
 
@@ -395,7 +281,7 @@ namespace StreamRecordTools
 
                 try
                 {
-                    foreach (var dirName in Directory.GetDirectories(outputPath, "202?????", SearchOption.TopDirectoryOnly))
+                    foreach (var dirName in Directory.GetDirectories(OutputPath, "202?????", SearchOption.TopDirectoryOnly))
                     {
                         if (!Directory.Exists(dirName))
                         {
@@ -403,7 +289,7 @@ namespace StreamRecordTools
                             continue;
                         }
 
-                        List<string> videoIdList = new List<string>();
+                        List<string> videoIdList = new();
 
                         foreach (var item in Directory.GetFiles(dirName))
                         {
@@ -430,8 +316,8 @@ namespace StreamRecordTools
                                 {
                                     try
                                     {
-                                        Log.Info($"移動 \"{videoFile}\" 至 \"{unarchivedOutputPath}{Path.GetFileName(videoFile)}\"");
-                                        File.Move($"{videoFile}", $"{unarchivedOutputPath}{Path.GetFileName(videoFile)}");
+                                        Log.Info($"移動 \"{videoFile}\" 至 \"{UnarchivedOutputPath}{Path.GetFileName(videoFile)}\"");
+                                        File.Move($"{videoFile}", $"{UnarchivedOutputPath}{Path.GetFileName(videoFile)}");
                                     }
                                     catch (Exception ex)
                                     {
@@ -451,16 +337,87 @@ namespace StreamRecordTools
             Log.Warn("已開啟自動檢測保存目錄內的私人存檔");
             #endregion
 
-            if (isDisableLiveFromStart)
+            if (subOptions.DisableLiveFromStart)
                 Log.Info("不自動從頭開始錄影");
 
             do { await Task.Delay(1000); }
             while (!Utility.IsClose);
 
             await sub.UnsubscribeAllAsync();
-            Log.Info("已取消訂閱Redis頻道");
+            Log.Info("已取消訂閱 Redis 頻道");
 
             return ResultType.Sub;
+        }
+
+        private static async Task StartRecordYouTube(string videoId, bool dontSendStartMessage)
+        {
+            bool isError; VideoSnippet snippetData = null;
+            do
+            {
+                try
+                {
+                    snippetData = (await Utility.GetSnippetDataAndLiveStreamingDetailsByVideoIdAsync(videoId)).VideoSnippet;
+                    isError = false;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"youtube.record: {videoId}");
+                    isError = true;
+                    await Task.Delay(1000);
+                }
+            } while (isError);
+
+            if (snippetData == null)
+            {
+                Log.Warn($"{videoId} 無直播資料，可能已被移除");
+                return;
+            }
+
+            videoId = videoId.ToString().Replace("-", "@");
+            Log.Info($"{snippetData.ChannelTitle}: {snippetData.Title}");
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (Utility.InDocker && dockerClient != null)
+                {
+                    await StartRecordContainer(videoId.ToString(), snippetData, dontSendStartMessage);
+                }
+                else if (!Utility.InDocker)
+                {
+                    string procArgs = $"dotnet StreamRecordTools.dll" +
+                        $" yt_once {videoId}" +
+                        $" -o \"{OutputPath}\"" +
+                        $" -t \"{TempPath}\"" +
+                        $" -u \"{UnarchivedOutputPath}\"" +
+                        $" -m \"{MemberOnlyOutputPath}\"" +
+                        (IsDisableLiveFromStart ? " --disable-live-from-start" : "") +
+                        (dontSendStartMessage ? " --dont-send-start-message" : "");
+                    Process.Start("tmux", $"new-window -d -n \"{snippetData.ChannelTitle}\" {procArgs}");
+                }
+                else
+                {
+                    Log.Error("在 Docker 環境內但無法建立新的容器來錄影，請確認環境是否正常");
+                }
+            }
+            else
+            {
+                string procArgs = $"dotnet StreamRecordTools.dll" +
+                    $" yt_once {videoId}" +
+                    $" -o \"{OutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                    $" -t \"{TempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                    $" -u \"{UnarchivedOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                    $" -m \"{MemberOnlyOutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                    (IsDisableLiveFromStart ? " --disable-live-from-start" : "" +
+                    (dontSendStartMessage ? " --dont-send-start-message" : ""));
+
+                Process.Start(new ProcessStartInfo()
+                {
+                    FileName = "dotnet",
+                    Arguments = procArgs.Replace("dotnet ", ""),
+                    CreateNoWindow = false,
+                    UseShellExecute = true
+                });
+            }
         }
 
         private static async Task StartRecordContainer(string videoId, VideoSnippet snippetData, bool dontSendStartMessage)
@@ -482,7 +439,7 @@ namespace StreamRecordTools
                     {
                         $"{Utility.GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output",
                         $"{Utility.GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path",
-                        $"{Utility.GetEnvironmentVariable("UnArchivedPath", typeof(string), true)}:/unarchived",
+                        $"{Utility.GetEnvironmentVariable("UnarchivedPath", typeof(string), true)}:/unarchived",
                         $"{Utility.GetEnvironmentVariable("MemberOnlyPath", typeof(string), true)}:/member_only",
                         $"{Utility.GetEnvironmentVariable("CookiesFilePath", typeof(string), true)}:/app/cookies.txt"
                     }
@@ -506,18 +463,18 @@ namespace StreamRecordTools
 
                 Cmd = new List<string>
                 {
-                    "onceondocker",
+                    "yt_once_on_docker",
                     videoId,
                     "--disable-live-from-start",
                     dontSendStartMessage ? "--dont-send-start-message" : ""
                 },
 
-                // 不要讓程式自己Attach以免Log混亂
+                // 不要讓程式自己 Attach 以免 Log 混亂
                 AttachStdout = false,
                 AttachStdin = false,
                 AttachStderr = false,
 
-                // 允許另外透過其他方法Attach進去交互
+                // 允許另外透過其他方法 Attach 進去交互
                 OpenStdin = true,
                 Tty = true
             };

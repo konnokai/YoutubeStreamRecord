@@ -9,7 +9,7 @@ using ResultType = StreamRecordTools.Program.ResultType;
 
 namespace StreamRecordTools
 {
-    public static class Record
+    public static class YouTubeRecord
     {
         static string videoId;
         static string fileName;
@@ -93,12 +93,12 @@ namespace StreamRecordTools
             }
             else
             {
-                Log.Error("Video Id非11字元");
+                Log.Error("Video Id 非 11 字元");
                 return ResultType.Error;
             }
 
-            Log.Info($"直播影片Id: {videoId}");
-            Log.Info($"頻道Id: {channelId}");
+            Log.Info($"直播影片 Id: {videoId}");
+            Log.Info($"頻道 Id: {channelId}");
             Log.Info($"頻道名稱: {channelTitle}");
             Log.Info($"直播預計開始時間: {streamScheduledStartTime}");
             if (!isStartStream)

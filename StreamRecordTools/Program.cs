@@ -33,11 +33,11 @@ namespace StreamRecordTools
                 ApiKey = Utility.BotConfig.GoogleApiKey,
             });
 
-            var result = Parser.Default.ParseArguments<OnceOptions, OnceOnDockerOptions, SubOptions>(args)
+            var result = Parser.Default.ParseArguments<YTOnceOptions, YTOnceOnDockerOptions, SubOptions>(args)
                 .MapResult(
-                (OnceOptions options) => Record.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
-                (OnceOnDockerOptions options) => Record.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
-                (SubOptions options) => Subscribe.SubRecord(options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.AutoDeleteArchived, options.DisableLiveFromStart).Result,
+                (YTOnceOptions options) => YouTubeRecord.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
+                (YTOnceOnDockerOptions options) => YouTubeRecord.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
+                (SubOptions options) => Subscribe.SubRecord(options).Result,
                 Error => ResultType.None);
 
 #if DEBUG
@@ -90,8 +90,8 @@ namespace StreamRecordTools
             public bool DisableLiveFromStart { get; set; } = false;
         }
 
-        [Verb("once", HelpText = "單次錄影")]
-        public class OnceOptions : RequiredOptions
+        [Verb("yt_once", HelpText = "單次錄影")]
+        public class YTOnceOptions : RequiredOptions
         {
             [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
             public string VideolId { get; set; }
@@ -103,8 +103,8 @@ namespace StreamRecordTools
             public bool DontSendStartMessage { get; set; } = false;
         }
 
-        [Verb("onceondocker", HelpText = "在 Docker 環境內單次錄影")]
-        public class OnceOnDockerOptions
+        [Verb("yt_once_on_docker", HelpText = "在 Docker 環境內單次錄影")]
+        public class YTOnceOnDockerOptions
         {
             [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
             public string VideolId { get; set; }
