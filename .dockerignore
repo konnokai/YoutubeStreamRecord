@@ -3,14 +3,14 @@
 *
 
 # Don't ignore project folder
-!YoutubeStreamRecord/**
+!StreamRecordTools/**
 
 # Not use
 !docker-entrypoint.sh
 
 # Ignore bin and obj folders in project
-YoutubeStreamRecord/bin/*
-YoutubeStreamRecord/obj/*
+StreamRecordTools/bin/*
+StreamRecordTools/obj/*
 
 # Default created
 **/.classpath

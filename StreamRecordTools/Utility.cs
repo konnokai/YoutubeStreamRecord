@@ -13,7 +13,7 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 
-namespace YoutubeStreamRecord
+namespace StreamRecordTools
 {
     public static class Utility
     {

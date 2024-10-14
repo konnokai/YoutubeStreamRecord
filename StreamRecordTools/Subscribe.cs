@@ -10,9 +10,9 @@ using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using ResultType = YoutubeStreamRecord.Program.ResultType;
+using ResultType = StreamRecordTools.Program.ResultType;
 
-namespace YoutubeStreamRecord
+namespace StreamRecordTools
 {
     public class Subscribe
     {
@@ -72,31 +72,32 @@ namespace YoutubeStreamRecord
                 {
                     dockerClient = new DockerClientConfiguration(new Uri("unix:///var/run/docker.sock")).CreateClient();
                     await dockerClient.System.PingAsync();
-                    Log.Info("成功連線到docker.sock!");
+                    Log.Info("成功連線到 docker.sock!");
 
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "在Docker環境但無法連接到docker.sock，請確認Volume綁定是否正確");
+                    Log.Error(ex, "在 Docker 環境但無法連接到 docker.sock，請確認 Volume 綁定是否正確");
                     return ResultType.Error;
                 }
 
                 try
                 {
                     var networks = await dockerClient.Networks.ListNetworksAsync();
-                    var network = networks.FirstOrDefault((x) => x.Name.EndsWith("youtube-record"));
+                    var network = networks.FirstOrDefault((x) => x.Name.EndsWith("stream-record-tools"));
                     if (network != null)
                     {
                         NetworkId = network.ID;
                     }
                     else
                     {
-                        Log.Error("找不到\"youtube-record\"對應的Docker網路，嘗試自動建立...");
+                        Log.Error("找不到 \"stream-record-tools\" 對應的 Docker 網路，嘗試自動建立...");
                         // 不知道是否能建立成功，而且原則上network應該要是存在的
                         // 因為用compose架的話network一定要存在才能把container打開
                         var createdNetwork = await dockerClient.Networks.CreateNetworkAsync(new NetworksCreateParameters
                         {
-                            Name = "youtube-record",
+                            Name = "stream-record-tools",
+                            Driver = "bridge",
                             Attachable = true,
                             IPAM = new IPAM()
                             {
@@ -119,7 +120,7 @@ namespace YoutubeStreamRecord
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "取得Network Id失敗");
+                    Log.Error(ex, "取得 Network Id 失敗");
                     return ResultType.Error;
                 }
             }
@@ -161,7 +162,7 @@ namespace YoutubeStreamRecord
                     }
                     else if (!Utility.InDocker)
                     {
-                        string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                        string procArgs = $"dotnet StreamRecordTools.dll" +
                             $" once {videoId}" +
                             $" -o \"{outputPath}\"" +
                             $" -t \"{tempPath}\"" +
@@ -177,7 +178,7 @@ namespace YoutubeStreamRecord
                 }
                 else
                 {
-                    string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                    string procArgs = $"dotnet StreamRecordTools.dll" +
                         $" once {videoId}" +
                         $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
@@ -232,7 +233,7 @@ namespace YoutubeStreamRecord
                     }
                     else if (!Utility.InDocker)
                     {
-                        string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                        string procArgs = $"dotnet StreamRecordTools.dll" +
                             $" once {videoId}" +
                             $" -o \"{outputPath}\"" +
                             $" -t \"{tempPath}\"" +
@@ -244,12 +245,12 @@ namespace YoutubeStreamRecord
                     }
                     else
                     {
-                        Log.Error("在Docker環境內但無法建立新的容器來錄影，請確認環境是否正常");
+                        Log.Error("在 Docker 環境內但無法建立新的容器來錄影，請確認環境是否正常");
                     }
                 }
                 else
                 {
-                    string procArgs = $"dotnet \"Youtube Stream Record.dll\"" +
+                    string procArgs = $"dotnet StreamRecordTools.dll" +
                         $" once {videoId}" +
                         $" -o \"{outputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
                         $" -t \"{tempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
@@ -324,8 +325,8 @@ namespace YoutubeStreamRecord
 
             UptimeKumaClient.Init(Utility.BotConfig.UptimeKumaPushUrl);
 
-            Regex regex = new Regex(@"(\d{4})(\d{2})(\d{2})");
-            Regex fileNameRegex = new Regex(@"youtube_(?'ChannelId'[\w\-\\_]{24})_(?'Date'\d{8})_(?'Time'\d{6})_(?'VideoId'[\w\-\\_]{11})\.(?'Ext'[\w]{2,4})");
+            Regex regex = new(@"(\d{4})(\d{2})(\d{2})");
+            Regex fileNameRegex = new(@"youtube_(?'ChannelId'[\w\-\\_]{24})_(?'Date'\d{8})_(?'Time'\d{6})_(?'VideoId'[\w\-\\_]{11})\.(?'Ext'[\w]{2,4})");
 
             #region 自動刪除2天後的暫存存檔
             if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath))
@@ -465,7 +466,7 @@ namespace YoutubeStreamRecord
         {
             var parms = new CreateContainerParameters
             {
-                Image = "jun112561/youtube-record:master",
+                Image = "jun112561/stream-record-tools:master",
                 Name = $"record-{videoId.Replace("@", "-")}-{DateTime.Now:yyyyMMdd-HHmmss}",
 
                 Env = new List<string>

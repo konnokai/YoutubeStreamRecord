@@ -4,7 +4,7 @@ using Google.Apis.YouTube.v3;
 using System;
 using System.Reflection;
 
-namespace YoutubeStreamRecord
+namespace StreamRecordTools
 {
     public static class Program
     {
@@ -86,17 +86,17 @@ namespace YoutubeStreamRecord
             [Option('m', "member-only-output", Required = true, HelpText = "會限直播輸出路徑")]
             public string MemberOnlyOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
 
-            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無SSD且須大量同時錄影請開啟本選項")]
+            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無 SSD 且須大量同時錄影請開啟本選項")]
             public bool DisableLiveFromStart { get; set; } = false;
         }
 
         [Verb("once", HelpText = "單次錄影")]
         public class OnceOptions : RequiredOptions
         {
-            [Value(0, Required = true, HelpText = "直播Id (需為11字元，如 Id 內有 '-' 請用 '@' 替換)")]
+            [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
             public string VideolId { get; set; }
 
-            [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
+            [Option('d', "disable-redis", Required = false, HelpText = "不使用 Redis")]
             public bool DisableRedis { get; set; } = false;
 
             [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
@@ -106,13 +106,13 @@ namespace YoutubeStreamRecord
         [Verb("onceondocker", HelpText = "在 Docker 環境內單次錄影")]
         public class OnceOnDockerOptions
         {
-            [Value(0, Required = true, HelpText = "直播Id (需為11字元，如 Id 內有 '-' 請用 '@' 替換)")]
+            [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
             public string VideolId { get; set; }
 
             [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
             public bool DisableRedis { get; set; } = false;
 
-            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無SSD且須大量同時錄影請開啟本選項")]
+            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無 SSD 且須大量同時錄影請開啟本選項")]
             public bool DisableLiveFromStart { get; set; } = false;
 
             [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
@@ -122,7 +122,7 @@ namespace YoutubeStreamRecord
         [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
         public class SubOptions : RequiredOptions
         {
-            [Option('d', "audo-delete", Required = false, HelpText = "自動刪除超過14天的存檔", Default = false)]
+            [Option('d', "audo-delete", Required = false, HelpText = "自動刪除超過 14 天的存檔", Default = false)]
             public bool AutoDeleteArchived { get; set; }
         }
     }

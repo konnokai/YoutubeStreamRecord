@@ -1,8 +1,8 @@
 version: "3.9"
 services:
-  youtube-record:
-    container_name: youtube-record-master
-    image: jun112561/youtube-record:master
+  stream-record-master:
+    container_name: stream-record-master
+    image: jun112561/stream-record-tools:master
     tty: true
     stdin_open: true
     volumes:
@@ -16,11 +16,11 @@ services:
       - .env
     restart: unless-stopped
     networks:
-      youtube-record:
+      stream-record-tools:
         ipv4_address: 172.28.0.2
 
 networks:
-  youtube-record:
+  stream-record-tools:
     driver: bridge
     ipam:
       driver: default

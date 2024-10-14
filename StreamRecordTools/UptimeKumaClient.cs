@@ -18,7 +18,7 @@ public static class UptimeKumaClient
 
         if (string.IsNullOrEmpty(uptimeKumaPushUrl))
         {
-            Log.Warn($"未設定{nameof(uptimeKumaPushUrl)}的網址，略過檢測");
+            Log.Warn($"未設定 {nameof(uptimeKumaPushUrl)} 的網址，略過檢測");
             return false;
         }
 
@@ -30,7 +30,7 @@ public static class UptimeKumaClient
             timerUptimeKumaPush = new Timer(async (state) => { await UptimeKumaTimerHandler(state); });
             timerUptimeKumaPush.Change(0, 30 * 1000);
 
-            Log.Info("已註冊Uptime Kuma狀態檢測");
+            Log.Info("已註冊 Uptime Kuma 狀態檢測");
         }
         catch (Exception ex)
         {
@@ -47,7 +47,7 @@ public static class UptimeKumaClient
             var result = await httpClient.GetStringAsync($"{uptimeKumaPushUrl}?status=up&msg=OK&ping=");
             if (result != "{\"ok\":true}")
             {
-                Log.Error("Uptime Kuma回傳錯誤");
+                Log.Error("Uptime Kuma 回傳錯誤");
                 Log.Error(result);
             }
         }

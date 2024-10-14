@@ -362,4 +362,4 @@ MigrationBackup/
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
 
-/Youtube Stream Record/Properties/launchSettings.json
+/StreamRecordTools/Properties/launchSettings.json
