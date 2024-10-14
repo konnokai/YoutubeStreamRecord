@@ -1,6 +1,8 @@
 ﻿using CommandLine;
 using Google.Apis.Services;
 using Google.Apis.YouTube.v3;
+using StreamRecordTools.Command;
+using StreamRecordTools.Command.Record;
 using System;
 using System.Reflection;
 
@@ -35,8 +37,8 @@ namespace StreamRecordTools
 
             var result = Parser.Default.ParseArguments<YTOnceOptions, YTOnceOnDockerOptions, SubOptions>(args)
                 .MapResult(
-                (YTOnceOptions options) => YouTubeRecord.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
-                (YTOnceOnDockerOptions options) => YouTubeRecord.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
+                (YTOnceOptions options) => YouTube.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
+                (YTOnceOnDockerOptions options) => YouTube.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
                 (SubOptions options) => Subscribe.SubRecord(options).Result,
                 Error => ResultType.None);
 

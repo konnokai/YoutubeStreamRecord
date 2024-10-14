@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using static StreamRecordTools.Program;
 using ResultType = StreamRecordTools.Program.ResultType;
 
-namespace StreamRecordTools
+namespace StreamRecordTools.Command
 {
     public class Subscribe
     {

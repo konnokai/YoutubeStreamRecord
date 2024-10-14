@@ -7,9 +7,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using ResultType = StreamRecordTools.Program.ResultType;
 
-namespace StreamRecordTools
+namespace StreamRecordTools.Command.Record
 {
-    public static class YouTubeRecord
+    public static class YouTube
     {
         static string videoId;
         static string fileName;
@@ -289,7 +289,7 @@ namespace StreamRecordTools
                                 if (isDisableLiveFromStart)
                                 {
                                     #region 每六小時重新執行錄影
-                                    int waitTime = (5 * 60 * 60) + (59 * 60);
+                                    int waitTime = 5 * 60 * 60 + 59 * 60;
                                     var task = Task.Run(async () =>
                                     {
                                         do
