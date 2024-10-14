@@ -20,4 +20,4 @@ ENV TZ="Asia/Taipei"
 STOPSIGNAL SIGQUIT
 
 ENTRYPOINT ["dotnet", "StreamRecordTools.dll"]
-CMD [ "sub", "-d", "-s", "-o", "/output", "-t", "/temp_path", "-u", "/unarchived_stream", "-m", "/member_only_stream"]
+CMD [ "sub", "--audo-delete", "-s", "-o", "/output", "-t", "/temp_path", "-u", "/unarchived_stream", "-m", "/member_only_stream"]

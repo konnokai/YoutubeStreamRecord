@@ -102,7 +102,7 @@ namespace StreamRecordTools
         [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
         public class SubOptions : YouTubeRequiredOptions
         {
-            [Option('d', "audo-delete", Required = false, HelpText = "自動刪除超過 14 天的存檔", Default = false)]
+            [Option("audo-delete", Required = false, HelpText = "自動刪除超過 14 天的存檔", Default = false)]
             public bool AutoDeleteArchived { get; set; }
         }
 
