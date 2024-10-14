@@ -35,7 +35,7 @@ namespace StreamRecordTools
                 ApiKey = Utility.BotConfig.GoogleApiKey,
             });
 
-            var result = Parser.Default.ParseArguments<YTOnceOptions, YTOnceOnDockerOptions, SubOptions>(args)
+            var result = Parser.Default.ParseArguments<YTOnceOptions, YTOnceOnDockerOptions, TwitchOnceOptions, SubOptions>(args)
                 .MapResult(
                 (YTOnceOptions options) => YouTube.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
                 (YTOnceOnDockerOptions options) => YouTube.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,

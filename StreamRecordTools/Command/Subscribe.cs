@@ -510,8 +510,6 @@ namespace StreamRecordTools.Command
 
         private static async Task StartRecordTwitch(string userLogin)
         {
-            Log.Info($"Twitch Record UserLogin: {userLogin}");
-
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
                 if (Utility.InDocker && dockerClient != null)
