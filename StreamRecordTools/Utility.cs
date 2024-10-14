@@ -128,10 +128,10 @@ namespace StreamRecordTools
                 {
                     IsDelLive = true;
                     if (isFirstCheck && !isDisableRedis)
-                        Redis.GetSubscriber().Publish("youtube.deletestream", videoId);
+                        Redis.GetSubscriber().Publish(new("youtube.deletestream", RedisChannel.PatternMode.Literal), videoId);
                     return true;
                 }
-                if (videoResult2.Items[0].LiveStreamingDetails.ActualEndTime.HasValue)
+                if (videoResult2.Items[0].LiveStreamingDetails.ActualEndTimeDateTimeOffset.HasValue)
                 {
                     return true;
                 }

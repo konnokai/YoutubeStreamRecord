@@ -1,6 +1,7 @@
 ﻿using Docker.DotNet;
 using Docker.DotNet.Models;
 using Google.Apis.YouTube.v3.Data;
+using StackExchange.Redis;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -125,7 +126,7 @@ namespace StreamRecordTools
                 }
             }
 
-            sub.Subscribe("youtube.record", async (redisChannel, videoId) =>
+            sub.Subscribe(new("youtube.record", RedisChannel.PatternMode.Literal), async (redisChannel, videoId) =>
             {
                 Log.Info($"已接收錄影請求: {videoId}");
 
@@ -196,7 +197,7 @@ namespace StreamRecordTools
                 }
             });
 
-            sub.Subscribe("youtube.rerecord", async (redisChannel, videoId) =>
+            sub.Subscribe(new("youtube.rerecord", RedisChannel.PatternMode.Literal), async (redisChannel, videoId) =>
             {
                 Log.Info($"已接收重新錄影請求: {videoId}");
 
@@ -269,12 +270,12 @@ namespace StreamRecordTools
                 }
             });
 
-            sub.Subscribe("youtube.test", (channel, nope) =>
+            sub.Subscribe(new("youtube.test", RedisChannel.PatternMode.Literal), (channel, nope) =>
             {
                 Log.Info($"已接收測試請求");
             });
 
-            sub.Subscribe("youtube.test.cookie", async (channel, nope) =>
+            sub.Subscribe(new("youtube.test.cookie", RedisChannel.PatternMode.Literal), async (channel, nope) =>
             {
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && Utility.InDocker)
                 {
@@ -290,17 +291,17 @@ namespace StreamRecordTools
                 }
             });
 
-            sub.Subscribe("youtube.unarchived", (channel, videoId) =>
+            sub.Subscribe(new("youtube.unarchived", RedisChannel.PatternMode.Literal), (channel, videoId) =>
             {
                 Log.Warn($"已刪檔直播: {videoId}");
             });
 
-            sub.Subscribe("youtube.memberonly", (channel, videoId) =>
+            sub.Subscribe(new("youtube.memberonly", RedisChannel.PatternMode.Literal), (channel, videoId) =>
             {
                 Log.Warn($"已轉會限直播: {videoId}");
             });
 
-            sub.Subscribe("youtube.removeById", async (channel, containerId) =>
+            sub.Subscribe(new("youtube.removeById", RedisChannel.PatternMode.Literal), async (channel, containerId) =>
             {
                 if (Utility.InDocker && dockerClient != null)
                 {
@@ -424,7 +425,7 @@ namespace StreamRecordTools
                         {
                             if (!videoDataFromApi.Any((x) => x.Id == item))
                             {
-                                Utility.Redis.GetSubscriber().Publish("youtube.unarchived", item);
+                                Utility.Redis.GetSubscriber().Publish(new("youtube.unarchived", RedisChannel.PatternMode.Literal), item);
                                 foreach (var videoFile in Directory.GetFiles(dirName, $"*{item}.???"))
                                 {
                                     try

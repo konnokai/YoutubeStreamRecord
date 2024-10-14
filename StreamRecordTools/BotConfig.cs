@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
+using StreamRecordTools;
 using System;
 using System.IO;
-using StreamRecordTools;
 
 public class BotConfig
 {

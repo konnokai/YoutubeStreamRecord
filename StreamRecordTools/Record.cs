@@ -1,4 +1,5 @@
-﻿using System;
+﻿using StackExchange.Redis;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -65,7 +66,7 @@ namespace StreamRecordTools
                             return ResultType.Error;
                         }
 
-                        if (!result.VideoLiveStreamingDetails.ScheduledStartTime.HasValue)
+                        if (result.VideoLiveStreamingDetails.ScheduledEndTimeDateTimeOffset == null)
                         {
                             Log.Error($"{videoId} 無開始直播時間");
                             return ResultType.Error;
@@ -73,8 +74,8 @@ namespace StreamRecordTools
 
                         channelId = result.VideoSnippet.ChannelId;
                         channelTitle = result.VideoSnippet.ChannelTitle;
-                        streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledStartTime.Value;
-                        isStartStream = result.VideoLiveStreamingDetails.ActualStartTime.HasValue;
+                        streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledEndTimeDateTimeOffset.Value.LocalDateTime;
+                        isStartStream = result.VideoLiveStreamingDetails.ActualStartTimeDateTimeOffset.HasValue;
                         isError = false;
                     }
                     catch (HttpRequestException httpEx)
@@ -150,7 +151,7 @@ namespace StreamRecordTools
 
                 fileName = $"youtube_{channelId}_{DateTime.Now:yyyyMMdd_HHmmss}_{videoId}";
 
-                CancellationTokenSource cancellationToken = new CancellationTokenSource();
+                CancellationTokenSource cancellationToken = new();
                 CancellationToken token = cancellationToken.Token;
 
                 // 如果關閉從開頭錄影的話，每六小時需要重新開一次錄影，才能避免掉長時間錄影導致HTTP 503錯誤
@@ -197,9 +198,9 @@ namespace StreamRecordTools
                             return;
                         }
 
-                        if (streamScheduledStartTime != result.VideoLiveStreamingDetails.ScheduledStartTime.Value)
+                        if (streamScheduledStartTime != result.VideoLiveStreamingDetails.ScheduledStartTimeDateTimeOffset.Value.LocalDateTime)
                         {
-                            streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledStartTime.Value;
+                            streamScheduledStartTime = result.VideoLiveStreamingDetails.ScheduledStartTimeDateTimeOffset.Value.LocalDateTime;
                             Log.Info($"已更改開台時間: {streamScheduledStartTime}");
                             isNeedRestart = true;
                             process.Kill(Signum.SIGTERM);
@@ -238,7 +239,7 @@ namespace StreamRecordTools
                         if (e.Data.Contains("members-only content"))
                         {
                             Log.Error("檢測到無法讀取的會限");
-                            Utility.Redis.GetSubscriber().Publish("youtube.startstream", $"{videoId}:1");
+                            Utility.Redis.GetSubscriber().Publish(new("youtube.startstream", RedisChannel.PatternMode.Literal), $"{videoId}:1");
                             process.Kill(Signum.SIGTERM);
                             isCanNotRecordStream = true;
                         }
@@ -282,7 +283,7 @@ namespace StreamRecordTools
 
                             if (!isDisableRedis)
                             {
-                                if (!dontSendStartMessage) Utility.Redis.GetSubscriber().Publish("youtube.startstream", $"{videoId}:0");
+                                if (!dontSendStartMessage) Utility.Redis.GetSubscriber().Publish(new("youtube.startstream", RedisChannel.PatternMode.Literal), $"{videoId}:0");
                                 Utility.Redis.GetDatabase().SetAdd("youtube.nowRecord", videoId);
 
                                 if (isDisableLiveFromStart)
@@ -299,7 +300,7 @@ namespace StreamRecordTools
                                                 return;
                                         } while (waitTime >= 0);
 
-                                        Utility.Redis.GetSubscriber().Publish("youtube.rerecord", videoId);
+                                        Utility.Redis.GetSubscriber().Publish(new("youtube.rerecord", RedisChannel.PatternMode.Literal), videoId);
                                     });
                                     #endregion
                                 }
@@ -356,7 +357,7 @@ namespace StreamRecordTools
 
                     // https://social.msdn.microsoft.com/Forums/en-US/c2c12a9f-dc4c-4c9a-b652-65374ef999d8/get-docker-container-id-in-code?forum=aspdotnetcore
                     if (Utility.InDocker && !isDisableRedis)
-                        Utility.Redis.GetSubscriber().Publish("youtube.removeById", Environment.MachineName);
+                        Utility.Redis.GetSubscriber().Publish(new("youtube.removeById", RedisChannel.PatternMode.Literal), Environment.MachineName);
                 }
             }
             else
@@ -380,7 +381,7 @@ namespace StreamRecordTools
                     Log.Info($"移動 \"{item}\" 至 \"{outputPath}{Path.GetFileName(item)}\"");
                     File.Move(item, $"{outputPath}{Path.GetFileName(item)}");
                     if (!isDisableRedis && !string.IsNullOrEmpty(redisChannel))
-                        Utility.Redis.GetSubscriber().Publish(redisChannel, videoId);
+                        Utility.Redis.GetSubscriber().Publish(new(redisChannel, RedisChannel.PatternMode.Literal), videoId);
                 }
                 catch (Exception ex)
                 {
