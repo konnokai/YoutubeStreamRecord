@@ -57,7 +57,7 @@ namespace StreamRecordTools.Command.Record
             if (!string.IsNullOrEmpty(_twitchOAuthToken) && _twitchOAuthToken.Length == 30)
                 procArgs += $" \"--twitch-api-header=Authorization=OAuth {_twitchOAuthToken}\"";
 
-            procArgs += $"https://twitch.tv/{userLogin} best";
+            procArgs += $" https://twitch.tv/{userLogin} best";
 
             var process = new Process();
             process.StartInfo.FileName = "streamlink";
