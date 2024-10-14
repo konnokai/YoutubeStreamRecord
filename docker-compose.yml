@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   stream-record-master:
     container_name: stream-record-master

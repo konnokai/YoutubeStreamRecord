@@ -39,6 +39,7 @@ namespace StreamRecordTools
                 .MapResult(
                 (YTOnceOptions options) => YouTube.StartRecord(options.VideolId, options.OutputPath, options.TempPath, options.UnarchivedOutputPath, options.MemberOnlyOutputPath, options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
                 (YTOnceOnDockerOptions options) => YouTube.StartRecord(options.VideolId, "/output", "/temp_path", "/unarchived", "/member_only", options.DisableRedis, options.DisableLiveFromStart, options.DontSendStartMessage).Result,
+                (TwitchOnceOptions options) => Twitch.StartRecord(options),
                 (SubOptions options) => Subscribe.SubRecord(options).Result,
                 Error => ResultType.None);
 
@@ -82,6 +83,12 @@ namespace StreamRecordTools
             [Option('t', "temp-path", Required = false, HelpText = "暫存路徑")]
             public string TempPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
 
+            [Option('d', "disable-redis", Required = false, HelpText = "不使用 Redis")]
+            public bool DisableRedis { get; set; } = false;
+        }
+
+        public class YouTubeRequiredOptions : RequiredOptions
+        {
             [Option('u', "unarchived-output", Required = true, HelpText = "刪檔直播輸出路徑")]
             public string UnarchivedOutputPath { get; set; } = AppDomain.CurrentDomain.BaseDirectory;
 
@@ -92,40 +99,31 @@ namespace StreamRecordTools
             public bool DisableLiveFromStart { get; set; } = false;
         }
 
-        [Verb("yt_once", HelpText = "單次錄影")]
-        public class YTOnceOptions : RequiredOptions
-        {
-            [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
-            public string VideolId { get; set; }
-
-            [Option('d', "disable-redis", Required = false, HelpText = "不使用 Redis")]
-            public bool DisableRedis { get; set; } = false;
-
-            [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
-            public bool DontSendStartMessage { get; set; } = false;
-        }
-
-        [Verb("yt_once_on_docker", HelpText = "在 Docker 環境內單次錄影")]
-        public class YTOnceOnDockerOptions
-        {
-            [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
-            public string VideolId { get; set; }
-
-            [Option('d', "disable-redis", Required = false, HelpText = "不使用Redis")]
-            public bool DisableRedis { get; set; } = false;
-
-            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無 SSD 且須大量同時錄影請開啟本選項")]
-            public bool DisableLiveFromStart { get; set; } = false;
-
-            [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
-            public bool DontSendStartMessage { get; set; } = false;
-        }
-
         [Verb("sub", HelpText = "訂閱式錄影，此模式需要搭配特定軟體使用，請勿使用")]
-        public class SubOptions : RequiredOptions
+        public class SubOptions : YouTubeRequiredOptions
         {
             [Option('d', "audo-delete", Required = false, HelpText = "自動刪除超過 14 天的存檔", Default = false)]
             public bool AutoDeleteArchived { get; set; }
+        }
+
+        [Verb("yt_once", HelpText = "單次錄影 YouTube")]
+        public class YTOnceOptions : YouTubeRequiredOptions
+        {
+            [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
+            public string VideolId { get; set; }
+
+            [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
+            public bool DontSendStartMessage { get; set; } = false;
+        }
+
+        [Verb("yt_once_on_docker", HelpText = "在 Docker 環境內單次錄影 YouTube")]
+        public class YTOnceOnDockerOptions : YTOnceOptions { }
+
+        [Verb("twitch_once", HelpText = "單次錄影 Twitch")]
+        public class TwitchOnceOptions : RequiredOptions
+        {
+            [Value(0, Required = true, HelpText = "圖奇實況主頻道網址或登入帳號")]
+            public string UserLogin { get; set; }
         }
     }
 }

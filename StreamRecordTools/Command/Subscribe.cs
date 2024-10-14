@@ -146,14 +146,14 @@ namespace StreamRecordTools.Command
 
             sub.Subscribe(new("youtube.record", RedisChannel.PatternMode.Literal), async (redisChannel, videoId) =>
             {
-                Log.Info($"已接收錄影請求: {videoId}");
+                Log.Info($"已接收 YouTube 錄影請求: {videoId}");
 
                 await StartRecordYouTube(videoId, false);
             });
 
             sub.Subscribe(new("youtube.rerecord", RedisChannel.PatternMode.Literal), async (redisChannel, videoId) =>
             {
-                Log.Info($"已接收重新錄影請求: {videoId}");
+                Log.Info($"已接收 YouTube 重新錄影請求: {videoId}");
 
                 await StartRecordYouTube(videoId, true);
             });
@@ -181,15 +181,22 @@ namespace StreamRecordTools.Command
 
             sub.Subscribe(new("youtube.unarchived", RedisChannel.PatternMode.Literal), (channel, videoId) =>
             {
-                Log.Warn($"已刪檔直播: {videoId}");
+                Log.Warn($"YouTube 已刪檔直播: {videoId}");
             });
 
             sub.Subscribe(new("youtube.memberonly", RedisChannel.PatternMode.Literal), (channel, videoId) =>
             {
-                Log.Warn($"已轉會限直播: {videoId}");
+                Log.Warn($"YouTube 已轉會限直播: {videoId}");
             });
 
-            sub.Subscribe(new("youtube.removeById", RedisChannel.PatternMode.Literal), async (channel, containerId) =>
+            sub.Subscribe(new("twitch.record", RedisChannel.PatternMode.Literal), async (redisChannel, userLogin) =>
+            {
+                Log.Info($"已接收 Twitch 錄影請求: {userLogin}");
+
+                await StartRecordTwitch(userLogin);
+            });
+
+            sub.Subscribe(new("streamTools.removeById", RedisChannel.PatternMode.Literal), async (channel, containerId) =>
             {
                 if (Utility.InDocker && dockerClient != null)
                 {
@@ -207,7 +214,7 @@ namespace StreamRecordTools.Command
                 }
             });
 
-            Log.Info("已訂閱Redis頻道");
+            Log.Info("已訂閱 Redis 頻道");
 
 
             UptimeKumaClient.Init(Utility.BotConfig.UptimeKumaPushUrl);
@@ -380,7 +387,7 @@ namespace StreamRecordTools.Command
             {
                 if (Utility.InDocker && dockerClient != null)
                 {
-                    await StartRecordContainer(videoId.ToString(), snippetData, dontSendStartMessage);
+                    await StartRecordYouTubeContainer(videoId.ToString(), snippetData, dontSendStartMessage);
                 }
                 else if (!Utility.InDocker)
                 {
@@ -420,7 +427,7 @@ namespace StreamRecordTools.Command
             }
         }
 
-        private static async Task StartRecordContainer(string videoId, VideoSnippet snippetData, bool dontSendStartMessage)
+        private static async Task StartRecordYouTubeContainer(string videoId, VideoSnippet snippetData, bool dontSendStartMessage)
         {
             var parms = new CreateContainerParameters
             {
@@ -467,6 +474,122 @@ namespace StreamRecordTools.Command
                     videoId,
                     "--disable-live-from-start",
                     dontSendStartMessage ? "--dont-send-start-message" : ""
+                },
+
+                // 不要讓程式自己 Attach 以免 Log 混亂
+                AttachStdout = false,
+                AttachStdin = false,
+                AttachStderr = false,
+
+                // 允許另外透過其他方法 Attach 進去交互
+                OpenStdin = true,
+                Tty = true
+            };
+
+            try
+            {
+                var containerResponse = await dockerClient.Containers.CreateContainerAsync(parms, CancellationToken.None);
+                Log.Info($"已建立容器: {containerResponse.ID}");
+
+                if (containerResponse.Warnings.Any())
+                    Log.Warn($"容器警告: {string.Join('\n', containerResponse.Warnings)}");
+                else if (await dockerClient.Containers.StartContainerAsync(containerResponse.ID, new ContainerStartParameters(), CancellationToken.None))
+                    Log.Info($"容器啟動成功: {containerResponse.ID}");
+                else
+                    Log.Warn($"容器已建立但無法啟動: {containerResponse.ID}");
+            }
+            catch (DockerApiException dockerEx) when (dockerEx.Message.ToLower().Contains("already in use by container"))
+            {
+                Log.Warn($"已建立 {parms.Name} 的容器，略過建立");
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, $"建立容器 {parms.Name} 錯誤");
+            }
+        }
+
+        private static async Task StartRecordTwitch(string userLogin)
+        {
+            Log.Info($"Twitch Record UserLogin: {userLogin}");
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (Utility.InDocker && dockerClient != null)
+                {
+                    await StartRecordTwitchContainer(userLogin);
+                }
+                else if (!Utility.InDocker)
+                {
+                    string procArgs = $"dotnet StreamRecordTools.dll" +
+                        $" twitch_once {userLogin}" +
+                        $" -o \"{OutputPath}\"" +
+                        $" -t \"{TempPath}\"";
+                    Process.Start("tmux", $"new-window -d -n \"Twitch {userLogin}\" {procArgs}");
+                }
+                else
+                {
+                    Log.Error("在 Docker 環境內但無法建立新的容器來錄影，請確認環境是否正常");
+                }
+            }
+            else
+            {
+                string procArgs = $"dotnet StreamRecordTools.dll" +
+                    $" twitch_once {userLogin}" +
+                    $" -o \"{OutputPath.TrimEnd(Utility.GetEnvSlash()[0])}\"" +
+                    $" -t \"{TempPath.TrimEnd(Utility.GetEnvSlash()[0])}\"";
+
+                Process.Start(new ProcessStartInfo()
+                {
+                    FileName = "dotnet",
+                    Arguments = procArgs.Replace("dotnet ", ""),
+                    CreateNoWindow = false,
+                    UseShellExecute = true
+                });
+            }
+        }
+
+        private static async Task StartRecordTwitchContainer(string userLogin)
+        {
+            var parms = new CreateContainerParameters
+            {
+                Image = "jun112561/stream-record-tools:master",
+                Name = $"record-twitch-{userLogin}-{DateTime.Now:yyyyMMdd-HHmmss}",
+
+                Env = new List<string>
+                {
+                    $"GoogleApiKey={Utility.GetEnvironmentVariable("GoogleApiKey", typeof(string), true)}", // 之後要移掉，目前 Program.cs 裡面有強制綁這個環境變數
+                    $"TwitchCookieAuthToken={Utility.GetEnvironmentVariable("TwitchCookieAuthToken", typeof(string), true)}",
+                    $"RedisOption={Utility.GetEnvironmentVariable("RedisOption", typeof(string), true)}"
+                },
+
+                HostConfig = new HostConfig()
+                {
+                    Binds = new List<string>()
+                    {
+                        $"{Utility.GetEnvironmentVariable("RecordPath", typeof(string), true)}:/output",
+                        $"{Utility.GetEnvironmentVariable("TempPath", typeof(string), true)}:/temp_path"
+                    }
+                },
+
+                Labels = new Dictionary<string, string>
+                {
+                    { "me.konnokai.record.twitch.userLogin", userLogin }
+                },
+
+                NetworkingConfig = new NetworkingConfig()
+                {
+                    EndpointsConfig = new Dictionary<string, EndpointSettings>()
+                    {
+                        { "" , new EndpointSettings() { NetworkID = NetworkId } }
+                    }
+                },
+
+                Cmd = new List<string>
+                {
+                    "twitch_once",
+                    userLogin,
+                    "-o /output",
+                    "-t /temp_path"
                 },
 
                 // 不要讓程式自己 Attach 以免 Log 混亂
