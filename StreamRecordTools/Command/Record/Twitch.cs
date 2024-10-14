@@ -53,7 +53,7 @@ namespace StreamRecordTools.Command.Record
             userLogin = options.UserLogin;
             fileName = $"[{userLogin}] - {DateTime.Now:yyyyMMdd_HHmmss}.ts";
 
-            string procArgs = $"--twitch-disable-ads --output \"{tempPath}{fileName}\"";
+            string procArgs = $"--twitch-disable-ads --progress no --output \"{tempPath}{fileName}\"";
             if (!string.IsNullOrEmpty(_twitchOAuthToken) && _twitchOAuthToken.Length == 30)
                 procArgs += $" \"--twitch-api-header=Authorization=OAuth {_twitchOAuthToken}\"";
 
