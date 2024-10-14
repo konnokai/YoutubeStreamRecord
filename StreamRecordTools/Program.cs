@@ -117,7 +117,20 @@ namespace StreamRecordTools
         }
 
         [Verb("yt_once_on_docker", HelpText = "在 Docker 環境內單次錄影 YouTube")]
-        public class YTOnceOnDockerOptions : YTOnceOptions { }
+        public class YTOnceOnDockerOptions
+        {
+            [Value(0, Required = true, HelpText = "直播 Id (需為 11 字元，如 Id 內有 '-' 請用 '@' 替換)")]
+            public string VideolId { get; set; }
+
+            [Option('d', "disable-redis", Required = false, HelpText = "不使用 Redis")]
+            public bool DisableRedis { get; set; } = false;
+
+            [Option('s', "disable-live-from-start", Required = false, HelpText = "不從直播開頭錄影，如錄影環境無 SSD 且須大量同時錄影請開啟本選項")]
+            public bool DisableLiveFromStart { get; set; } = false;
+
+            [Option("dont-send-start-message", Required = false, HelpText = "不發送直播開始通知")]
+            public bool DontSendStartMessage { get; set; } = false;
+        }
 
         [Verb("twitch_once", HelpText = "單次錄影 Twitch")]
         public class TwitchOnceOptions : RequiredOptions
