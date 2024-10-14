@@ -19,6 +19,18 @@ namespace StreamRecordTools.Command.Record
 
         public static ResultType StartRecord(TwitchOnceOptions options)
         {
+            try
+            {
+                RedisConnection.Init(Utility.BotConfig.RedisOption);
+                Utility.Redis = RedisConnection.Instance.ConnectionMultiplexer;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Redis連線錯誤，請確認伺服器是否已開啟");
+                Log.Error(ex.ToString());
+                return ResultType.Error;
+            }
+
             isDisableRedis = options.DisableRedis;
 
             if (!options.OutputPath.EndsWith(Utility.GetEnvSlash()))
@@ -26,8 +38,8 @@ namespace StreamRecordTools.Command.Record
             if (!options.TempPath.EndsWith(Utility.GetEnvSlash()))
                 options.TempPath += Utility.GetEnvSlash();
 
-            outputPath = options.OutputPath.Replace("\"", "");
-            tempPath = options.TempPath.Replace("\"", "");
+            outputPath = options.OutputPath.Replace("\"", "").Trim();
+            tempPath = options.TempPath.Replace("\"", "").Trim();
 
             tempPath += $"{DateTime.Now:yyyyMMdd}{Utility.GetEnvSlash()}";
             if (!Directory.Exists(tempPath)) Directory.CreateDirectory(tempPath);
@@ -41,9 +53,11 @@ namespace StreamRecordTools.Command.Record
             userLogin = options.UserLogin;
             fileName = $"[{userLogin}] - {DateTime.Now:yyyyMMdd_HHmmss}.ts";
 
-            string procArgs = $"--twitch-disable-ads https://twitch.tv/{userLogin} best --output \"{tempPath}{fileName}";
+            string procArgs = $"--twitch-disable-ads --output \"{tempPath}{fileName}\"";
             if (!string.IsNullOrEmpty(_twitchOAuthToken) && _twitchOAuthToken.Length == 30)
                 procArgs += $" \"--twitch-api-header=Authorization=OAuth {_twitchOAuthToken}\"";
+
+            procArgs += $"https://twitch.tv/{userLogin} best";
 
             var process = new Process();
             process.StartInfo.FileName = "streamlink";
