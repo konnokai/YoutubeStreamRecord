@@ -41,15 +41,16 @@ namespace StreamRecordTools.Command.Record
             userLogin = options.UserLogin;
             fileName = $"[{userLogin}] - {DateTime.Now:yyyyMMdd_HHmmss}.ts";
 
-            var process = new Process();
-            process.StartInfo.FileName = "streamlink";
-
             string procArgs = $"--twitch-disable-ads https://twitch.tv/{userLogin} best --output \"{tempPath}{fileName}";
             if (!string.IsNullOrEmpty(_twitchOAuthToken) && _twitchOAuthToken.Length == 30)
                 procArgs += $" \"--twitch-api-header=Authorization=OAuth {_twitchOAuthToken}\"";
 
+            var process = new Process();
+            process.StartInfo.FileName = "streamlink";
+            process.StartInfo.Arguments = procArgs;
             process.StartInfo.RedirectStandardError = true;
             process.StartInfo.RedirectStandardOutput = true;
+
             process.ErrorDataReceived += (sender, e) =>
             {
                 try
