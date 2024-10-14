@@ -1,4 +1,4 @@
-# YT錄影小幫手
+# 錄影小幫手
 
 需配置 Google Api Key 使用
 
@@ -17,27 +17,27 @@
 
 需要從頭將專案編譯，我相信你可以自己搞定參數設定及如何開始錄影的
 
-## Docker環境，Sub模式
+## Docker 環境，Sub 模式
 
 本模式是設計給直播小幫手串接使用，一般無需使用
 
-1. 複製專案 `git clone https://github.com/jun112561/YoutubeStreamRecord.git`
+1. 複製專案 `git clone https://github.com/konnokai/YoutubeStreamRecord.git`
 2. 開啟 `.env_sample` 編輯為正確設定值後存檔為 `.env` 到專案目錄內
  **\*請務必確定所有路徑皆為絕對路徑\***
 3. 部屬 Docker Image `docker compose up -d`
 
 使用 Redis Publish 指令到 youtube.record，參數為11碼 VideoId 即可觸發建立容器並錄影
 
-## Docker環境，單一直播錄影模式
+## Docker 環境，單一直播錄影模式
 
-1. 複製專案 `git clone https://github.com/jun112561/YoutubeStreamRecord.git` (或是單獨下載 `.env_sample` 並放到新資料夾)
+1. 複製專案 `git clone https://github.com/konnokai/YoutubeStreamRecord.git` (或是單獨下載 `.env_sample` 並放到新資料夾)
 2. `cd YoutubeStreamRecord`
 3. 根據上方說明製作 `cookies.txt` 並將文件放置專案目錄
 4. 開啟 `.env_sample` 並編輯 `GoogleApiKey` 成正確的 ApiKey 後存檔為 `.env` 到專案目錄內
 
 取得11碼的 VideoId 並替換下方指令中的 `(VideoId)` 區塊
 
-執行 `docker run -it -d --env-file .env -v "/record/output:/output" -v "/record/temp:/temp_path" -v "/record/unarchived:/unarchived_stream" -v "/record/member_only:/member_only_stream" -v "/cookies.txt:/app/cookies.txt" jun112561/youtube-record:master onceondocker (VideoId) -d -s`
+執行 `docker run -it -d --env-file .env -v "/record/output:/output" -v "/record/temp:/temp_path" -v "/record/unarchived:/unarchived_stream" -v "/record/member_only:/member_only_stream" -v "/cookies.txt:/app/cookies.txt" konnokai/youtube-record:master onceondocker (VideoId) -d -s`
 
 Docker -v 參數請自行替換成實體主機中要保存的絕對路徑，唯獨 Container 掛載路徑不可變更
 
