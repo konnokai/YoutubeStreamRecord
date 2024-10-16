@@ -236,7 +236,7 @@ namespace StreamRecordTools.Command.Record
 
                         Log.Error(e.Data);
 
-                        if (e.Data.Contains("members-only content"))
+                        if (e.Data.Contains("members-only content") || e.Data.Contains("channel's members"))
                         {
                             Log.Error("檢測到無法讀取的會限");
                             Utility.Redis.GetSubscriber().Publish(new("youtube.startstream", RedisChannel.PatternMode.Literal), $"{videoId}:1");
