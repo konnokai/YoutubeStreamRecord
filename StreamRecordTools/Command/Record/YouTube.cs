@@ -355,9 +355,16 @@ namespace StreamRecordTools.Command.Record
                     Log.Info("將直播轉移至保存點");
                     MoveVideo(outputPath, "youtube.endstream");
 
-                    // https://social.msdn.microsoft.com/Forums/en-US/c2c12a9f-dc4c-4c9a-b652-65374ef999d8/get-docker-container-id-in-code?forum=aspdotnetcore
-                    if (Utility.InDocker && !isDisableRedis)
-                        Utility.Redis.GetSubscriber().Publish(new("streamTools.removeById", RedisChannel.PatternMode.Literal), Environment.MachineName);
+                    if (Utility.IsLiveEnd(videoId, false, isDisableRedis))
+                    {
+                        // https://social.msdn.microsoft.com/Forums/en-US/c2c12a9f-dc4c-4c9a-b652-65374ef999d8/get-docker-container-id-in-code?forum=aspdotnetcore
+                        if (Utility.InDocker && !isDisableRedis)
+                            Utility.Redis.GetSubscriber().Publish(new("streamTools.removeById", RedisChannel.PatternMode.Literal), Environment.MachineName);
+                    }
+                    else
+                    {
+                        Log.Warn("還沒關台，保留容器以供紀錄檢查");
+                    }
                 }
             }
             else
