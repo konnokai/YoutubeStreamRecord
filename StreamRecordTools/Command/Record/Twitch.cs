@@ -102,7 +102,16 @@ namespace StreamRecordTools.Command.Record
             if (Path.GetDirectoryName(outputPath) != Path.GetDirectoryName(tempPath))
             {
                 Log.Info("將直播轉移至保存點");
-                MoveVideo(outputPath);
+                try
+                {
+                    Log.Info($"移動 \"{tempPath}{fileName}\" 至 \"{outputPath}{fileName}\"");
+                    File.Move($"{tempPath}{fileName}", $"{outputPath}{fileName}");
+                }
+                catch (Exception ex)
+                {
+                    if (Utility.InDocker) Log.Error(ex.ToString());
+                    else File.AppendAllText($"{tempPath}{fileName}_err.txt", ex.ToString());
+                }
 
                 // https://social.msdn.microsoft.com/Forums/en-US/c2c12a9f-dc4c-4c9a-b652-65374ef999d8/get-docker-container-id-in-code?forum=aspdotnetcore
                 if (Utility.InDocker && !isDisableRedis)
@@ -110,23 +119,6 @@ namespace StreamRecordTools.Command.Record
             }
 
             return ResultType.Once;
-        }
-
-        private static void MoveVideo(string outputPath)
-        {
-            foreach (var item in Directory.GetFiles(tempPath, $"*{userLogin}.???"))
-            {
-                try
-                {
-                    Log.Info($"移動 \"{item}\" 至 \"{outputPath}{Path.GetFileName(item)}\"");
-                    File.Move(item, $"{outputPath}{Path.GetFileName(item)}");
-                }
-                catch (Exception ex)
-                {
-                    if (Utility.InDocker) Log.Error(ex.ToString());
-                    else File.AppendAllText($"{tempPath}{fileName}_err.txt", ex.ToString());
-                }
-            }
         }
     }
 }
