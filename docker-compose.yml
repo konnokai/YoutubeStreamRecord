@@ -8,7 +8,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${RecordPath:-./record}:/output
       - ${TempPath:-./record}:/temp_path
-      - ${UnArchivedPath:-./unarchived}:/unarchived_stream
+      - ${UnarchivedPath:-./unarchived}:/unarchived_stream
       - ${MemberOnlyPath:-./member_only}:/member_only_stream
       - ${CookiesFilePath:-./cookies.txt}:/app/cookies.txt
     env_file:
